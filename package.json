@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
+    "framer-motion": "^12.23.26",
     "fs-extra": "^11.2.0",
     "limiter": "^3.0.0",
     "mongoose": "^9.1.0",
