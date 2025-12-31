@@ -3,7 +3,6 @@
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import Header from '@/components/Header'
-import Footer from '@/components/Footer'
 
 export default function LibraryNotFound() {
   return (
@@ -114,7 +113,6 @@ export default function LibraryNotFound() {
         </div>
       </main>
 
-      <Footer />
     </div>
   )
 }

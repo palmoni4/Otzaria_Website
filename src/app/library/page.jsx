@@ -13,7 +13,6 @@ export default function LibraryHome() {
         <Features />
         <ContributeSection />
       </main>
-      <Footer />
     </div>
   )
 }

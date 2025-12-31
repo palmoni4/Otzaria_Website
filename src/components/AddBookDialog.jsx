@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { uploadBookAction } from '@/app/library/admin/upload-action' // ייבוא ה-Action
 
 export default function AddBookDialog({ isOpen, onClose, onBookAdded }) {
     const [bookName, setBookName] = useState('')
@@ -11,7 +12,6 @@ export default function AddBookDialog({ isOpen, onClose, onBookAdded }) {
     const handleFileSelect = (e) => {
         if (e.target.files && e.target.files[0]) {
             setFile(e.target.files[0])
-            // אוטומטית מציע שם מהקובץ אם טרם הוזן
             if (!bookName) {
                 setBookName(e.target.files[0].name.replace('.pdf', ''))
             }
@@ -32,21 +32,15 @@ export default function AddBookDialog({ isOpen, onClose, onBookAdded }) {
         formData.append('bookName', bookName)
 
         try {
-            const res = await fetch('/api/admin/books/upload', {
-                method: 'POST',
-                body: formData
-            })
+            // קריאה ל-Server Action במקום ל-API
+            const result = await uploadBookAction(formData)
 
-            const data = await res.json()
-
-            if (!data.success) {
-                throw new Error(data.error || 'שגיאה בהעלאה')
+            if (!result.success) {
+                throw new Error(result.error || 'שגיאה בהעלאה')
             }
 
-            // הצלחה
             if (onBookAdded) onBookAdded()
             onClose()
-            // איפוס
             setFile(null)
             setBookName('')
 
