@@ -44,7 +44,6 @@ export default function AdminClient({ session }) {
 const loadData = async (retryCount = 0) => {
         try {
             setLoading(true)
-            console.log('📊 Loading admin data...')
 
             // תיקון: שימוש בנתיבים הנכונים + מנגנון הגנה מפני קריסה
             const [usersRes, booksRes, uploadsRes] = await Promise.all([
@@ -788,7 +787,6 @@ const loadData = async (retryCount = 0) => {
                                         <p className="text-on-surface/60">אין ספרים במערכת</p>
                                         <button
                                             onClick={() => {
-                                                console.log('🔄 Reloading books...')
                                                 loadData()
                                             }}
                                             className="mt-4 px-4 py-2 bg-primary text-on-primary rounded-lg hover:bg-accent transition-colors"

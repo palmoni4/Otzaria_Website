@@ -1,7 +1,5 @@
 'use client'
 
-import { Fragment } from 'react'
-
 /**
  * Reusable Modal/Dialog component with consistent styling and behavior
  * @param {Object} props

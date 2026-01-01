@@ -164,7 +164,6 @@ export default function BookPage() {
 
   const completePageWithoutUpload = async (pageNumber) => {
     try {
-      console.log('✅ Completing page without upload:', { bookPath, pageNumber })
       
       const pageId = pages.find(p => p.number === pageNumber)?.id;
       if (!pageId || !bookData.id) return alert('שגיאה בזיהוי העמוד או הספר');
@@ -186,7 +185,6 @@ export default function BookPage() {
             page.number === pageNumber ? result.page : page
           )
         )
-        console.log(`✅ עמוד ${pageNumber} הושלם`)
       } else {
         alert(`❌ ${result.error}`)
       }

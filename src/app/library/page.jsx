@@ -2,7 +2,6 @@ import Header from '@/components/Header'
 import Hero from '@/components/Hero'
 import Features from '@/components/Features'
 import ContributeSection from '@/components/ContributeSection'
-import Footer from '@/components/Footer'
 
 export default function LibraryHome() {
   return (
