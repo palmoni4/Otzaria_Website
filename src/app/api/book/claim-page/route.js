@@ -7,8 +7,14 @@ import mongoose from 'mongoose';
 
 export async function POST(request) {
     try {
-        const { bookPath, pageNumber, userId } = await request.json();
-        
+        const session = await getServerSession(authOptions);
+        if (!session) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const { bookPath, pageNumber } = await request.json();
+        const userId = session.user.id; // שימוש ב-ID מהסשן המאובטח ולא מהבקשה!
+
         if (!userId) {
              return NextResponse.json({ success: false, error: 'User ID missing' }, { status: 450 });
         }

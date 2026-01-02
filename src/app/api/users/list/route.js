@@ -48,7 +48,6 @@ export async function GET() {
         return {
             id: user._id.toString(),
             name: user.name,
-            email: user.email, // שים לב: זה חושף אימיילים לציבור, אם זה רגיש יש להסיר
             role: user.role,
             createdAt: user.createdAt,
             points: user.points || 0,

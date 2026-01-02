@@ -23,8 +23,8 @@ async function createAdmin() {
         console.log('✅ Connected successfully.');
 
         // --- הגדרות האדמין ---
-        const email = 'click.go.script@gmail.com'; // שנה לאימייל שלך
-        const password = 'DINI3141';       // שנה לסיסמה שלך
+        const email = '---------'; // שנה לאימייל שלך
+        const password = '-------';       // שנה לסיסמה שלך
         const name = 'Admin';
         // ---------------------
 
