@@ -4,6 +4,8 @@ import Page from '@/models/Page';
 import Book from '@/models/Book';
 import User from '@/models/User';
 import mongoose from 'mongoose';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 export async function POST(request) {
     try {

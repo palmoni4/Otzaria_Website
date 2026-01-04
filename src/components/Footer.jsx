@@ -54,19 +54,4 @@ export default function Footer() {
       </div>
     </footer>
   )
-}                </a>
-              </li>
-            </ul>
-          </div>
-        </div>
-        
-        {/* Bottom Bar */}
-        <div className="border-t border-outline/20 pt-8 text-center">
-          <p className="text-on-surface/60 text-sm">
-            © {new Date().getFullYear()} ספריית אוצריא. כל הזכויות שמורות.
-          </p>
-        </div>
-      </div>
-    </footer>
-  )
 }
