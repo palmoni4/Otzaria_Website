@@ -1,11 +1,7 @@
 import { NextResponse } from 'next/server'
 
-if (process.env.NODE_ENV === 'development') {
-  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-}
-
-//export const runtime = 'edge'
-export const revalidate = 600 // Cache for 10 minutes
+export const dynamic = 'force-dynamic'; // <--- שורה זו נוספה לתיקון השגיאה
+export const revalidate = 600
 
 export async function GET(request) {
   try {
@@ -42,7 +38,6 @@ export async function GET(request) {
 
     const assets = release.assets || []
     
-    // פונקציית עזר לחיפוש גמיש (case insensitive)
     const findAsset = (extension, keyword = '') => {
         return assets.find(a => {
             const name = a.name.toLowerCase();
@@ -54,10 +49,8 @@ export async function GET(request) {
     const downloads = {
       version: release.tag_name,
       windows: {
-        // מחפש כל קובץ EXE, מעדיף כזה עם המילה Setup אם יש כפילויות
         exe: findAsset('.exe'),
         msix: findAsset('.msix'),
-        // ZIP לווינדוס (שלא מכיל mac או linux בשם)
         zip: assets.find(a => a.name.endsWith('.zip') && !a.name.toLowerCase().includes('mac') && !a.name.toLowerCase().includes('linux'))?.browser_download_url
       },
       linux: {
@@ -67,7 +60,6 @@ export async function GET(request) {
       },
       macos: {
         dmg: findAsset('.dmg'),
-        // ZIP למק
         zip: assets.find(a => a.name.endsWith('.zip') && (a.name.toLowerCase().includes('mac') || a.name.toLowerCase().includes('darwin')))?.browser_download_url
       },
       android: {

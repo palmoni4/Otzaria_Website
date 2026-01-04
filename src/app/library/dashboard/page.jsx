@@ -1,3 +1,4 @@
+// src/app/library/dashboard/page.jsx
 'use client'
 
 import { useSession } from 'next-auth/react'
@@ -46,7 +47,6 @@ export default function DashboardPage() {
           completedPages: result.stats?.completedPages || 0,
           inProgressPages: result.stats?.inProgressPages || 0,
           points: result.stats?.points || 0,
-          // התיקון כאן: הנתונים נמצאים בתוך result.stats.recentActivity ולא ב-result.recentActivity
           recentActivity: result.stats?.recentActivity || []
         })
       }
@@ -250,7 +250,6 @@ export default function DashboardPage() {
                         {activity.status === 'completed' ? 'הושלם' : 'בטיפול'} • {activity.date}
                       </p>
                     </div>
-                    {/* כאן התיקון לנתיב הלינק */}
                     <Link 
                       href={`/library/book/${activity.bookPath}`}
                       className="text-primary hover:text-accent"
