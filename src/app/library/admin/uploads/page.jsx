@@ -28,7 +28,6 @@ export default function AdminUploadsPage() {
 
   const handleUpdateStatus = async (uploadId, status) => {
     try {
-      // עדכון אופטימי ב-UI
       setUploads(prev => prev.map(u => u.id === uploadId ? { ...u, status } : u))
       
       const res = await fetch('/api/admin/uploads/update-status', {
@@ -38,7 +37,6 @@ export default function AdminUploadsPage() {
       })
       
       if (!res.ok) {
-          // שחזור במקרה כישלון
           loadUploads()
           alert('שגיאה בעדכון הסטטוס')
       }
@@ -48,10 +46,12 @@ export default function AdminUploadsPage() {
     }
   }
 
-  const handleDownload = (fileName, originalName) => {
+  // --- התיקון כאן: שימוש ב-ID להורדה ---
+  const handleDownload = (uploadId, originalName) => {
       const link = document.createElement('a')
-      link.href = `/api/download/${fileName}`
-      link.download = originalName || fileName
+      // השרת מצפה ל-ID, לא לשם הקובץ
+      link.href = `/api/download/${uploadId}` 
+      link.download = originalName || 'download.txt'
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
@@ -84,14 +84,14 @@ export default function AdminUploadsPage() {
   }
 
   const handleDownloadAllPending = async () => {
-    const pending = uploads.filter(u => u.status === 'pending' && u.fileName)
+    const pending = uploads.filter(u => u.status === 'pending')
     if (pending.length === 0) return alert('אין קבצים להורדה')
 
     if (!confirm(`להוריד ${pending.length} קבצים?`)) return
 
     for (const upload of pending) {
-        handleDownload(upload.fileName, upload.originalFileName)
-        // השהייה קטנה למניעת חסימת הדפדפן
+        // שימוש ב-ID גם כאן
+        handleDownload(upload.id, upload.originalFileName)
         await new Promise(r => setTimeout(r, 500)) 
     }
   }
@@ -188,15 +188,14 @@ export default function AdminUploadsPage() {
                               </div>
                               
                               <div className="flex items-center justify-end gap-2 mt-4 pt-3 border-t border-gray-100">
-                                  {upload.fileName && (
-                                      <button 
-                                        onClick={() => handleDownload(upload.fileName, upload.originalFileName)}
-                                        className="flex items-center gap-1 px-3 py-1.5 text-gray-600 hover:bg-gray-100 rounded-lg text-sm transition-colors"
-                                      >
-                                          <span className="material-symbols-outlined text-lg">download</span>
-                                          הורד קובץ
-                                      </button>
-                                  )}
+                                  {/* שינוי: הורדנו את התנאי על fileName כי יש לנו ID תמיד */}
+                                  <button 
+                                    onClick={() => handleDownload(upload.id, upload.originalFileName)}
+                                    className="flex items-center gap-1 px-3 py-1.5 text-gray-600 hover:bg-gray-100 rounded-lg text-sm transition-colors"
+                                  >
+                                      <span className="material-symbols-outlined text-lg">download</span>
+                                      הורד קובץ
+                                  </button>
                                   
                                   {upload.status === 'pending' && (
                                       <>
