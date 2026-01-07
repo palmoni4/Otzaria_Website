@@ -249,7 +249,7 @@ export default function DashboardPage() {
                         {activity.status === 'completed' ? 'הושלם' : 'בטיפול'} • {activity.date}
                       </p>
                     </div>
-                    {activity.bookPath && activity.bookPath !== '#' && activity.pageNumber != null ? (
+                    {activity.bookPath && activity.bookPath !== '#' && activity.pageNumber !== null && activity.pageNumber !== undefined ? (
                       <Link 
                         href={`/library/edit/${encodeURIComponent(activity.bookPath)}/${activity.pageNumber}`}
                         className="text-primary hover:text-accent"
