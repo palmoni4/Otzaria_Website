@@ -288,22 +288,28 @@ export default function DashboardPage() {
 
       {/* My Messages Modal */}
       {showMyMessages && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="glass-strong rounded-2xl max-w-4xl w-full overflow-hidden">
-            <div className="p-8 max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-2xl font-bold text-on-surface flex items-center gap-3">
-                  <span className="material-symbols-outlined text-3xl text-primary">inbox</span>
-                  ההודעות שלי
-                </h3>
-                <button
-                  onClick={() => setShowMyMessages(false)}
-                  className="p-2 hover:bg-surface-variant rounded-lg transition-colors"
-                >
-                  <span className="material-symbols-outlined text-on-surface">close</span>
-                </button>
-              </div>
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          onClick={() => setShowMyMessages(false)}
+        >
+          <div
+            className="glass-strong rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-8 pb-6 flex items-center justify-between">
+              <h3 className="text-2xl font-bold text-on-surface flex items-center gap-3">
+                <span className="material-symbols-outlined text-3xl text-primary">inbox</span>
+                ההודעות שלי
+              </h3>
+              <button
+                onClick={() => setShowMyMessages(false)}
+                className="p-2 hover:bg-surface-variant rounded-lg transition-colors"
+              >
+                <span className="material-symbols-outlined text-on-surface">close</span>
+              </button>
+            </div>
 
+            <div className="px-8 pb-8 overflow-y-auto">
               {myMessages.length === 0 ? (
                 <div className="text-center py-12">
                   <span className="material-symbols-outlined text-6xl text-on-surface/30 mb-4">
