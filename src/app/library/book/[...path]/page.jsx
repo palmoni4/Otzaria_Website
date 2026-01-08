@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
@@ -45,11 +45,7 @@ export default function BookPage() {
   const [viewMode, setViewMode] = useState('single') 
   const [previewImage, setPreviewImage] = useState(null) // <--- State חדש לתצוגה מקדימה
 
-  useEffect(() => {
-    loadBookData()
-  }, [bookPath])
-
-  const loadBookData = async () => {
+  const loadBookData = useCallback(async () => {
     try {
       setLoading(true)
       const response = await fetch(`/api/book/${encodeURIComponent(bookPath)}`)
@@ -67,7 +63,11 @@ export default function BookPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [bookPath])
+
+  useEffect(() => {
+    loadBookData()
+  }, [loadBookData])
 
   const handleReleasePage = async (pageNumber) => {
     if (!session) return;
@@ -89,7 +89,8 @@ export default function BookPage() {
       } else {
         alert(`❌ ${result.error}`)
       }
-    } catch (error) {
+    } catch (err) {
+      console.error('Error releasing page:', err)
       alert('❌ שגיאה בשחרור העמוד')
     }
   }
@@ -333,7 +334,7 @@ export default function BookPage() {
           <div className="grid grid-cols-4 gap-4 mb-8">
             <div className="glass p-4 rounded-xl text-center border border-surface-variant/30">
               <p className="text-3xl font-bold text-on-surface">{stats.total}</p>
-              <p className="text-sm text-on-surface/70">סה"כ עמודים</p>
+              <p className="text-sm text-on-surface/70">סה&quot;כ עמודים</p>
             </div>
             <div className="glass p-4 rounded-xl text-center border-2 border-gray-300">
               <p className="text-3xl font-bold text-gray-700">{stats.available}</p>
@@ -385,7 +386,11 @@ export default function BookPage() {
                 : 'grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-4'
             }>
               {pages.map((page) => (
-                <div key={page.id || page.number} className="relative">
+                <div
+                  key={page.id || page.number}
+                  className="relative"
+                  style={{ contentVisibility: 'auto', containIntrinsicSize: '300px 400px' }}
+                >
                    <PageCard
                       page={page}
                       onClaim={handleClaimPage}
@@ -451,6 +456,9 @@ function PageCard({ page, onClaim, onComplete, onRelease, onPreview, currentUser
             <img 
               src={page.thumbnail} 
               alt={`עמוד ${page.number}`}
+              loading="lazy"
+              decoding="async"
+              fetchPriority="low"
               className="w-full h-full object-cover"
             />
             <div className="absolute top-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs font-bold z-10 pointer-events-none">
@@ -562,7 +570,7 @@ function ConfirmDialog({ pageNumber, userName, onConfirm, onCancel }) {
             <div className="text-sm text-blue-800">
               <p className="font-bold mb-1">מה יקרה?</p>
               <ul className="space-y-1">
-                <li>• העמוד יסומן כ"בטיפול"</li>
+                <li>• העמוד יסומן כ&quot;בטיפול&quot;</li>
                 <li>• העמוד יוצמד אליך ({userName})</li>
                 <li>• משתמשים אחרים יראו שהעמוד תפוס</li>
               </ul>
