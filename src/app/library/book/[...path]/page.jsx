@@ -293,7 +293,7 @@ export default function BookPage() {
       <header className="glass-strong border-b border-surface-variant sticky top-0 z-40">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link href="/library" className="flex items-center gap-2 text-on-surface hover:text-primary transition-colors">
+            <Link href={`/library/books`} className="flex items-center gap-2 text-on-surface hover:text-primary transition-colors">
               <span className="material-symbols-outlined">arrow_forward</span>
               <span>חזרה לספרייה</span>
             </Link>
