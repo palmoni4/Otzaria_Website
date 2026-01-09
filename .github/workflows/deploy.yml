@@ -37,6 +37,8 @@ jobs:
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_KEY }}
           port: ${{ secrets.PORT }}
+          timeout: 60s
+          command_timeout: 30m
           script: |
             set -e
 
@@ -45,27 +47,21 @@ jobs:
 
             echo "🚀 Starting Optimized Deployment..."
 
-            # ניקוי תיקייה זמנית ישנה
+
             rm -rf $TEMP_DIR
             mkdir -p $TEMP_DIR
 
-            # אופטימיזציה: העתקת הפרויקט ללא node_modules
-            # זה חוסך המון זמן כי אנחנו לא מעתיקים סתם אלפי קבצים שנמחוק עוד רגע
             echo "📋 Copying files (skipping heavy node_modules)..."
             rsync -a --exclude 'node_modules' --exclude '.git' $APP_DIR/ $TEMP_DIR/
             
             cd $TEMP_DIR
 
-            # משיכת הקוד החדש
             echo "📥 Pulling latest code..."
-            # אנחנו צריכים לאתחל גיט כי לא העתקנו את התיקייה .git הכבדה
             git init
             git remote add origin https://github.com/${{ github.repository }}.git
             git fetch --depth 1 origin master
             git reset --hard origin/master
 
-            # התקנה ובניה
-            # בשרת, npm שומר cache פנימי ולכן זה יהיה מהיר גם בלי להעתיק את התיקייה
             echo "📦 Installing dependencies..."
             npm ci
 
@@ -74,14 +70,10 @@ jobs:
 
             echo "✅ Build successful. Swapping folders..."
             
-            # העתקת התוצאה הסופית לאתר החי
-            # --delete מבטיח שקבצים שנמחקו מהקוד ימחקו גם מהשרת
             rsync -a --delete $TEMP_DIR/ $APP_DIR/
 
-            # ניקוי
             rm -rf $TEMP_DIR
 
-            # הפעלה מחדש
             echo "🔄 Reloading PM2..."
             cd $APP_DIR
             pm2 reload otzaria-web || pm2 restart otzaria-web
