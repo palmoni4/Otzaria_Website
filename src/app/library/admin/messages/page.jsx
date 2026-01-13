@@ -15,7 +15,7 @@ export default function AdminMessagesPage() {
   const [replyText, setReplyText] = useState('')
   const [selectedMessage, setSelectedMessage] = useState(null)
   
-  // State להודעה חדשה (משוחזר מהקוד הישן)
+  // State להודעה חדשה
   const [showSendMessageDialog, setShowSendMessageDialog] = useState(false)
   const [newMessageRecipient, setNewMessageRecipient] = useState('all')
   const [newMessageSubject, setNewMessageSubject] = useState('')
@@ -45,7 +45,6 @@ export default function AdminMessagesPage() {
       }
       
       if (usersData.success) {
-        // סינון האדמין עצמו מרשימת הנמענים אם רוצים, או השארתו
         setUsers(usersData.users.filter(u => u.role !== 'admin'))
       }
 
@@ -68,7 +67,7 @@ export default function AdminMessagesPage() {
           if (res.ok) {
               setReplyText('')
               setSelectedMessage(null)
-              loadData() // רענון כדי לראות את הסטטוס
+              loadData()
               alert('התגובה נשלחה בהצלחה')
           } else {
               alert('שגיאה בשליחת התגובה')
@@ -84,7 +83,6 @@ export default function AdminMessagesPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ messageId: id })
       })
-      // עדכון לוקאלי מהיר
       setMessages(prev => prev.map(m => m.id === id ? { ...m, status: 'read' } : m))
   }
 
@@ -98,7 +96,7 @@ export default function AdminMessagesPage() {
       setMessages(prev => prev.filter(m => m.id !== messageId))
   }
 
-  // --- לוגיקה משוחזרת לשליחת הודעה חדשה ---
+  // --- לוגיקה לשליחת הודעה חדשה ---
   const handleSendNewMessage = async () => {
     if (!newMessageSubject.trim() || !newMessageText.trim()) {
         alert('נא למלא את כל השדות')
@@ -125,7 +123,7 @@ export default function AdminMessagesPage() {
             setNewMessageText('')
             setNewMessageRecipient('all')
             setShowSendMessageDialog(false)
-            loadData() // רענון הרשימה
+            loadData()
         } else {
             alert(result.error || 'שגיאה בשליחת הודעה')
         }
@@ -168,6 +166,7 @@ export default function AdminMessagesPage() {
           <div className="space-y-4">
               {messages.map(message => (
                   <div key={message.id} className={`glass p-6 rounded-lg transition-all ${message.status === 'unread' ? 'border-2 border-primary shadow-md' : 'hover:shadow-md'}`}>
+                      {/* ...תוכן ההודעה הקיים... */}
                       <div className="flex items-start justify-between mb-4">
                           <div className="flex-1">
                               <div className="flex items-center gap-3 mb-2">
@@ -259,19 +258,26 @@ export default function AdminMessagesPage() {
           </div>
       )}
 
-      {/* --- דיאלוג שליחת הודעה (עיצוב משוחזר) --- */}
+      {/* --- דיאלוג שליחת הודעה מתוקן --- */}
       {showSendMessageDialog && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+          <div 
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            onClick={() => setShowSendMessageDialog(false)}
+          >
               <div 
-                className="glass-strong p-8 rounded-2xl max-w-2xl w-full shadow-2xl animate-in zoom-in-95 duration-200"
+                className="flex flex-col bg-white glass-strong rounded-2xl w-full max-w-2xl shadow-2xl animate-in zoom-in-95 duration-200"
                 onClick={e => e.stopPropagation()}
               >
-                  <h3 className="text-2xl font-bold mb-6 text-on-surface flex items-center gap-3 border-b border-gray-200 pb-4">
-                      <span className="material-symbols-outlined text-3xl text-primary">send</span>
-                      שלח הודעה למשתמשים
-                  </h3>
+                  {/* Fixed Header */}
+                  <div className="p-6 border-b border-gray-200 flex-shrink-0 bg-white/50 rounded-t-2xl">
+                      <h3 className="text-2xl font-bold text-on-surface flex items-center gap-3">
+                          <span className="material-symbols-outlined text-3xl text-primary">send</span>
+                          שלח הודעה למשתמשים
+                      </h3>
+                  </div>
                   
-                  <div className="space-y-5">
+                  {/* Scrollable Content */}
+                  <div className="p-6 space-y-5 overflow-y-auto custom-scrollbar flex-1">
                       <div>
                           <label className="block text-sm font-bold text-on-surface mb-2">נמען</label>
                           <select 
@@ -311,11 +317,12 @@ export default function AdminMessagesPage() {
                       </div>
                   </div>
 
-                  <div className="flex gap-3 mt-8 pt-4 border-t border-gray-200">
+                  {/* Fixed Footer */}
+                  <div className="flex gap-3 p-6 border-t border-gray-200 bg-gray-50/50 rounded-b-2xl flex-shrink-0">
                       <button 
                           onClick={handleSendNewMessage}
                           disabled={sendingNewMessage}
-                          className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-lg hover:bg-accent transition-all shadow-md font-bold disabled:opacity-70 disabled:cursor-not-allowed"
+                          className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-lg hover:bg-accent transition-all shadow-md font-bold disabled:opacity-70 disabled:cursor-not-allowed hover:-translate-y-0.5"
                       >
                           {sendingNewMessage ? (
                               <>
@@ -337,7 +344,7 @@ export default function AdminMessagesPage() {
                               setNewMessageRecipient('all')
                           }}
                           disabled={sendingNewMessage}
-                          className="px-6 py-3 glass rounded-lg hover:bg-surface-variant transition-colors font-medium border border-gray-300"
+                          className="px-6 py-3 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
                       >
                           ביטול
                       </button>

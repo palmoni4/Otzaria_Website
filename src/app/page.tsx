@@ -242,56 +242,60 @@ export default function Home() {
   );
 }
 
-// Download Modal Component
+// Download Modal Component - UPDATED STRUCTURE
 function DownloadModal({ isOpen, onClose, platform, stableLinks, devLinks, stableVersion, devVersion }: any) {
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
         onClick={(e) => e.stopPropagation()}
-        className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
+        className="flex flex-col bg-white rounded-2xl w-full max-w-2xl shadow-2xl max-h-[90vh]"
       >
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+        {/* Fixed Header */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 flex-shrink-0">
           <h2 className="text-2xl font-bold text-gray-800">
             הורדת אוצריא ל-{platform}
           </h2>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-            <span className="material-symbols-outlined">close</span>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500">
+            <span className="material-symbols-outlined text-2xl block">close</span>
           </button>
         </div>
 
-        <div className="p-6 space-y-8">
-          {/* Stable Version */}
-          <div>
-            <div className="flex items-center gap-3 mb-4">
-              <span className="material-symbols-outlined text-green-600">verified</span>
-              <h3 className="text-xl font-bold text-gray-800">
-                גירסה יציבה
-                {stableVersion && <span className="text-sm font-normal text-gray-500 mr-2"> ({stableVersion})</span>}
-              </h3>
-              <span className="px-3 py-1 bg-green-100 text-green-800 text-xs font-bold rounded-full">מומלץ</span>
+        {/* Scrollable Content */}
+        <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
+          <div className="space-y-8">
+            {/* Stable Version */}
+            <div>
+              <div className="flex items-center gap-3 mb-4 sticky top-0 bg-white z-10 py-2">
+                <span className="material-symbols-outlined text-green-600">verified</span>
+                <h3 className="text-xl font-bold text-gray-800">
+                  גירסה יציבה
+                  {stableVersion && <span className="text-sm font-normal text-gray-500 mr-2"> ({stableVersion})</span>}
+                </h3>
+                <span className="px-3 py-1 bg-green-100 text-green-800 text-xs font-bold rounded-full">מומלץ</span>
+              </div>
+              <div className="grid gap-3">
+                {renderDownloadOptions(platform, stableLinks)}
+              </div>
             </div>
-            <div className="grid gap-3">
-              {renderDownloadOptions(platform, stableLinks)}
-            </div>
-          </div>
 
-          {/* Dev Version */}
-          <div>
-            <div className="flex items-center gap-3 mb-4">
-              <span className="material-symbols-outlined text-orange-600">code</span>
-              <h3 className="text-xl font-bold text-gray-800">
-                גירסת פיתוח
-                {devVersion && <span className="text-sm font-normal text-gray-500 mr-2"> ({devVersion})</span>}
-              </h3>
-              <span className="px-3 py-1 bg-orange-100 text-orange-800 text-xs font-bold rounded-full">ניסיוני</span>
-            </div>
-            <div className="grid gap-3">
-              {renderDownloadOptions(platform, devLinks)}
+            {/* Dev Version */}
+            <div>
+              <div className="flex items-center gap-3 mb-4 sticky top-0 bg-white z-10 py-2">
+                <span className="material-symbols-outlined text-orange-600">code</span>
+                <h3 className="text-xl font-bold text-gray-800">
+                  גירסת פיתוח
+                  {devVersion && <span className="text-sm font-normal text-gray-500 mr-2"> ({devVersion})</span>}
+                </h3>
+                <span className="px-3 py-1 bg-orange-100 text-orange-800 text-xs font-bold rounded-full">ניסיוני</span>
+              </div>
+              <div className="grid gap-3">
+                {renderDownloadOptions(platform, devLinks)}
+              </div>
             </div>
           </div>
         </div>
@@ -329,7 +333,7 @@ function renderDownloadOptions(platform: string, links: any) {
   const validOptions = platformOptions.filter((opt: any) => links && links[opt.key])
 
   if (validOptions.length === 0) {
-    return <p className="text-gray-500 italic p-4 bg-gray-50 rounded-lg text-center">אין הורדות זמינות כרגע לגרסה זו.</p>
+    return <p className="text-gray-500 italic p-4 bg-gray-50 rounded-lg text-center border border-dashed border-gray-300">אין הורדות זמינות כרגע לגרסה זו.</p>
   }
 
   return validOptions.map((option: any) => (

@@ -2,6 +2,7 @@
 
 /**
  * Reusable Modal/Dialog component with consistent styling and behavior
+ * Fixed: Centering in viewport and scrollable content area
  * @param {Object} props
  * @param {boolean} props.isOpen - Whether the modal is visible
  * @param {Function} props.onClose - Callback when modal should close
@@ -38,50 +39,50 @@ export default function Modal({
   }
 
   return (
+    // Overlay: Fixed position covers the entire viewport (screen), z-index ensures it's on top
     <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-200"
       onClick={handleBackdropClick}
     >
+      {/* Modal Container: Flex column to manage header/content/footer layout */}
       <div
-        className={`bg-white rounded-2xl w-full ${sizeClasses[size]} p-6 shadow-xl max-h-[90vh] overflow-y-auto`}
+        className={`flex flex-col bg-white rounded-2xl w-full ${sizeClasses[size]} shadow-2xl max-h-[90vh] animate-in zoom-in-95 duration-200`}
         onClick={handleContentClick}
       >
-        {/* Header */}
-        {title && (
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">{title}</h2>
-            {closeable && (
-              <button
-                onClick={onClose}
-                className="text-gray-500 hover:text-gray-700 transition-colors"
-                aria-label="Close modal"
-              >
-                <span className="material-symbols-outlined text-3xl">close</span>
-              </button>
-            )}
-          </div>
-        )}
+        {/* Header - Fixed at the top */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-100 flex-shrink-0">
+          <h2 className="text-2xl font-bold text-gray-900 line-clamp-1">{title}</h2>
+          {closeable && (
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-700 hover:bg-gray-100 p-2 rounded-full transition-colors"
+              aria-label="Close modal"
+            >
+              <span className="material-symbols-outlined text-2xl block">close</span>
+            </button>
+          )}
+        </div>
 
-        {/* Content */}
-        <div className="mb-6">
+        {/* Content - Scrollable Area */}
+        <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
           {children}
         </div>
 
-        {/* Footer - Buttons */}
+        {/* Footer - Buttons - Fixed at the bottom if buttons exist */}
         {buttons.length > 0 && (
-          <div className="flex gap-3 justify-end mt-6">
+          <div className="flex gap-3 justify-end p-6 border-t border-gray-100 flex-shrink-0 bg-gray-50/50 rounded-b-2xl">
             {buttons.map((button, index) => (
               <button
                 key={index}
                 onClick={button.onClick}
                 disabled={button.disabled}
-                className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+                className={`px-6 py-2.5 rounded-lg font-bold transition-colors shadow-sm ${
                   button.variant === 'secondary'
-                    ? 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                    ? 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
                     : button.variant === 'danger'
                     ? 'bg-red-600 text-white hover:bg-red-700'
-                    : 'bg-blue-600 text-white hover:bg-blue-700'
-                } ${button.disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    : 'bg-primary text-on-primary hover:bg-accent'
+                } ${button.disabled ? 'opacity-50 cursor-not-allowed' : 'hover:-translate-y-0.5'}`}
               >
                 {button.label}
               </button>

@@ -378,30 +378,32 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* My Messages Modal */}
+      {/* My Messages Modal - UPDATED STRUCTURE */}
       {showMyMessages && (
         <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
           onClick={() => setShowMyMessages(false)}
         >
           <div
-            className="glass-strong rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+            className="flex flex-col bg-white glass-strong rounded-2xl w-full max-w-4xl shadow-2xl max-h-[90vh] animate-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-8 pb-6 flex items-center justify-between">
+            {/* Header */}
+            <div className="p-6 border-b border-surface-variant flex items-center justify-between flex-shrink-0 bg-white/50 rounded-t-2xl">
               <h3 className="text-2xl font-bold text-on-surface flex items-center gap-3">
                 <span className="material-symbols-outlined text-3xl text-primary">inbox</span>
                 ההודעות שלי
               </h3>
               <button
                 onClick={() => setShowMyMessages(false)}
-                className="p-2 hover:bg-surface-variant rounded-lg transition-colors"
+                className="p-2 hover:bg-surface-variant rounded-full transition-colors"
               >
-                <span className="material-symbols-outlined text-on-surface">close</span>
+                <span className="material-symbols-outlined text-2xl block text-on-surface">close</span>
               </button>
             </div>
 
-            <div className="px-8 pb-8 overflow-y-auto">
+            {/* Scrollable Content */}
+            <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
               {myMessages.length === 0 ? (
                 <div className="text-center py-12">
                   <span className="material-symbols-outlined text-6xl text-on-surface/30 mb-4">
@@ -412,7 +414,7 @@ export default function DashboardPage() {
               ) : (
                 <div className="space-y-4">
                   {myMessages.map(message => (
-                    <div key={message.id} className="glass p-6 rounded-lg">
+                    <div key={message.id} className="glass p-6 rounded-lg border border-surface-variant">
                       <div className="flex items-start justify-between mb-3">
                         <div>
                           <h4 className="text-xl font-bold text-on-surface mb-1">{message.subject}</h4>
@@ -447,10 +449,10 @@ export default function DashboardPage() {
                             {message.replies.map((reply, idx) => (
                               <div
                                 key={reply?.id || idx}
-                                className={`${reply?.senderRole === 'admin' ? 'bg-green-50' : 'bg-surface'} p-4 rounded-lg`}
+                                className={`${reply?.senderRole === 'admin' ? 'bg-green-50 border border-green-100' : 'bg-surface border border-surface-variant'} p-4 rounded-lg`}
                               >
                                 <p className="text-sm text-on-surface/60 mb-2">
-                                  <span className="font-medium">{getReplySenderDisplayName(reply)}</span>
+                                  <span className="font-medium text-primary">{getReplySenderDisplayName(reply)}</span>
                                   <span className="mx-2">•</span>
                                   {new Date(reply.createdAt).toLocaleDateString('he-IL', {
                                     day: 'numeric',
@@ -468,9 +470,9 @@ export default function DashboardPage() {
 
                       <div className="mt-4">
                         {replyingToMessageId === message.id ? (
-                          <div>
+                          <div className="animate-in fade-in slide-in-from-top-2">
                             <textarea
-                              className="w-full px-4 py-3 border border-surface-variant rounded-lg focus:outline-none focus:border-primary bg-white text-on-surface"
+                              className="w-full px-4 py-3 border border-surface-variant rounded-lg focus:outline-none focus:border-primary bg-white text-on-surface shadow-inner"
                               placeholder="כתוב תגובה..."
                               rows="4"
                               value={replyText}
@@ -478,23 +480,23 @@ export default function DashboardPage() {
                               disabled={sendingReply}
                               autoFocus
                             />
-                            <div className="flex gap-3 mt-3">
+                            <div className="flex gap-3 mt-3 justify-end">
                               <button
                                 onClick={() => {
                                   setReplyingToMessageId(null)
                                   setReplyText('')
                                 }}
                                 disabled={sendingReply}
-                                className="px-6 py-3 glass rounded-lg hover:bg-surface-variant transition-colors disabled:opacity-50"
+                                className="px-6 py-2 glass rounded-lg hover:bg-surface-variant transition-colors disabled:opacity-50 text-sm"
                               >
                                 ביטול
                               </button>
                               <button
                                 onClick={() => handleSendReply(message.id)}
                                 disabled={sendingReply}
-                                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-lg hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="flex items-center justify-center gap-2 px-6 py-2 bg-primary text-on-primary rounded-lg hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-bold shadow-sm"
                               >
-                                <span className="material-symbols-outlined">send</span>
+                                <span className="material-symbols-outlined text-sm">send</span>
                                 <span>{sendingReply ? 'שולח...' : 'שלח תגובה'}</span>
                               </button>
                             </div>
@@ -505,9 +507,9 @@ export default function DashboardPage() {
                               setReplyingToMessageId(message.id)
                               setReplyText('')
                             }}
-                            className="flex items-center gap-2 px-4 py-2 glass rounded-lg hover:bg-surface-variant transition-colors"
+                            className="flex items-center gap-2 px-4 py-2 glass rounded-lg hover:bg-surface-variant transition-colors text-sm font-medium border border-surface-variant"
                           >
-                            <span className="material-symbols-outlined">reply</span>
+                            <span className="material-symbols-outlined text-lg">reply</span>
                             <span>השב</span>
                           </button>
                         )}
@@ -521,16 +523,20 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Message Modal */}
+      {/* Message Modal - UPDATED STRUCTURE */}
       {showMessageForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="glass-strong p-8 rounded-2xl max-w-2xl w-full">
-            <h3 className="text-2xl font-bold mb-6 text-on-surface flex items-center gap-3">
-              <span className="material-symbols-outlined text-3xl text-primary">mail</span>
-              שלח הודעה למנהלים
-            </h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="flex flex-col bg-white glass-strong rounded-2xl w-full max-w-2xl shadow-2xl animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="p-6 border-b border-surface-variant bg-white/50 rounded-t-2xl">
+              <h3 className="text-2xl font-bold text-on-surface flex items-center gap-3">
+                <span className="material-symbols-outlined text-3xl text-primary">mail</span>
+                שלח הודעה למנהלים
+              </h3>
+            </div>
             
-            <div className="space-y-4">
+            {/* Content */}
+            <div className="p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-on-surface mb-2">נושא</label>
                 <input
@@ -538,7 +544,7 @@ export default function DashboardPage() {
                   value={messageSubject}
                   onChange={(e) => setMessageSubject(e.target.value)}
                   placeholder="נושא ההודעה..."
-                  className="w-full px-4 py-3 border border-surface-variant rounded-lg focus:outline-none focus:border-primary bg-white text-on-surface"
+                  className="w-full px-4 py-3 border border-surface-variant rounded-lg focus:outline-none focus:border-primary bg-white text-on-surface shadow-sm"
                   disabled={sendingMessage}
                 />
               </div>
@@ -549,21 +555,31 @@ export default function DashboardPage() {
                   value={messageText}
                   onChange={(e) => setMessageText(e.target.value)}
                   placeholder="כתוב את ההודעה שלך כאן..."
-                  className="w-full px-4 py-3 border border-surface-variant rounded-lg focus:outline-none focus:border-primary bg-white text-on-surface"
+                  className="w-full px-4 py-3 border border-surface-variant rounded-lg focus:outline-none focus:border-primary bg-white text-on-surface shadow-sm resize-none"
                   rows="8"
                   disabled={sendingMessage}
                 />
               </div>
             </div>
 
-            <div className="flex gap-3 mt-6">
+            {/* Footer */}
+            <div className="flex gap-3 p-6 border-t border-surface-variant bg-gray-50/50 rounded-b-2xl">
               <button
                 onClick={handleSendMessage}
                 disabled={sendingMessage}
-                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-lg hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-lg hover:bg-accent transition-all disabled:opacity-50 disabled:cursor-not-allowed font-bold shadow-md hover:-translate-y-0.5"
               >
-                <span className="material-symbols-outlined">send</span>
-                <span>{sendingMessage ? 'שולח...' : 'שלח הודעה'}</span>
+                {sendingMessage ? (
+                  <>
+                    <span className="material-symbols-outlined animate-spin text-xl">progress_activity</span>
+                    <span>שולח...</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-xl">send</span>
+                    <span>שלח הודעה</span>
+                  </>
+                )}
               </button>
               <button
                 onClick={() => {
@@ -572,7 +588,7 @@ export default function DashboardPage() {
                   setMessageText('')
                 }}
                 disabled={sendingMessage}
-                className="px-6 py-3 glass rounded-lg hover:bg-surface-variant transition-colors disabled:opacity-50"
+                className="px-6 py-3 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 font-medium"
               >
                 ביטול
               </button>
