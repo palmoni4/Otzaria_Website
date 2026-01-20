@@ -67,7 +67,7 @@ export default function EditPage() {
   const [selectionStart, setSelectionStart] = useState(null)
   const [selectionEnd, setSelectionEnd] = useState(null)
   const [selectionRect, setSelectionRect] = useState(null)
-  const [ocrMethod, setOcrMethod] = useState('tesseract')
+  const [ocrMethod, setOcrMethod] = useState('ocrwin')
   const { isProcessing: isOcrProcessing, performGeminiOCR, performTesseractOCR, performOCRWin } = useOCR()
 
   // Settings State
