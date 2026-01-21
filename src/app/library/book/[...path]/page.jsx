@@ -44,6 +44,7 @@ export default function BookPage() {
   const [uploadDialog, setUploadDialog] = useState(null)
   const [viewMode, setViewMode] = useState('single') 
   const [previewImage, setPreviewImage] = useState(null) // <--- State חדש לתצוגה מקדימה
+  const [activeFilter, setActiveFilter] = useState('all')
 
   const loadBookData = useCallback(async () => {
     try {
@@ -327,22 +328,50 @@ export default function BookPage() {
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-4 gap-4 mb-8">
-            <div className="glass p-4 rounded-xl text-center border border-surface-variant/30">
+            <button 
+              onClick={() => setActiveFilter('all')}
+              className={`glass p-4 rounded-xl text-center border transition-all ${
+                activeFilter === 'all' 
+                ? 'border-primary ring-2 ring-primary/20 bg-primary/5' 
+                : 'border-surface-variant/30 hover:border-primary/50'
+              }`}
+            >
               <p className="text-3xl font-bold text-on-surface">{stats.total}</p>
               <p className="text-sm text-on-surface/70">סה&quot;כ עמודים</p>
-            </div>
-            <div className="glass p-4 rounded-xl text-center border-2 border-gray-300">
+            </button>
+            <button 
+              onClick={() => setActiveFilter('available')}
+              className={`glass p-4 rounded-xl text-center border-2 transition-all ${
+                activeFilter === 'available'
+                  ? 'border-gray-500 bg-gray-50 ring-2 ring-gray-200'
+                  : 'border-gray-300 hover:border-gray-400'
+              }`}
+            >
               <p className="text-3xl font-bold text-gray-700">{stats.available}</p>
               <p className="text-sm text-gray-700">זמינים</p>
-            </div>
-            <div className="glass p-4 rounded-xl text-center border-2 border-blue-300">
+            </button>
+            <button 
+              onClick={() => setActiveFilter('in-progress')}
+              className={`glass p-4 rounded-xl text-center border-2 transition-all ${
+                activeFilter === 'in-progress'
+                  ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
+                  : 'border-blue-300 hover:border-blue-400'
+              }`}
+            >
               <p className="text-3xl font-bold text-blue-700">{stats.inProgress}</p>
               <p className="text-sm text-blue-700">בטיפול</p>
-            </div>
-            <div className="glass p-4 rounded-xl text-center border-2 border-green-300">
+            </button>
+            <button 
+              onClick={() => setActiveFilter('completed')}
+              className={`glass p-4 rounded-xl text-center border-2 transition-all ${
+                activeFilter === 'completed'
+                  ? 'border-green-500 bg-green-50 ring-2 ring-green-200'
+                  : 'border-green-300 hover:border-green-400'
+              }`}
+            >
               <p className="text-3xl font-bold text-green-700">{stats.completed}</p>
               <p className="text-sm text-green-700">הושלמו</p>
-            </div>
+            </button>
           </div>
 
           <div className="glass-strong rounded-2xl p-6 border border-surface-variant/30">
@@ -380,7 +409,9 @@ export default function BookPage() {
                 ? 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4'
                 : 'grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-4'
             }>
-              {pages.map((page) => (
+              {pages
+                .filter(page => activeFilter === 'all' || page.status === activeFilter)
+                .map((page) => (
                 <div
                   key={page.id || page.number}
                   className="relative"
