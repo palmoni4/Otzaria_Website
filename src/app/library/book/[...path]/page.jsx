@@ -434,8 +434,10 @@ export default function BookPage() {
 
 function PageCard({ page, onClaim, onComplete, onRelease, onPreview, currentUser, bookPath }) { // <--- קבלת onPreview
   const status = pageStatusConfig[page.status]
-  const isClaimedByMe = currentUser && page.claimedBy === currentUser.name
-
+  const isClaimedByMe = currentUser && (
+    page.claimedBy === currentUser.name || 
+    page.claimedById === (currentUser.id || currentUser._id)
+  );
   return (
     <div 
       className="group relative glass rounded-xl overflow-hidden border-2 border-surface-variant hover:border-primary/50 transition-all"
@@ -508,32 +510,46 @@ function PageCard({ page, onClaim, onComplete, onRelease, onPreview, currentUser
             {isClaimedByMe ? 'שלך' : page.claimedBy}
           </p>
         )}
-
-        {page.status === 'available' && (
-          <button
-            onClick={() => onClaim(page.number)}
-            className="w-full py-2 bg-primary text-on-primary rounded-lg text-sm font-bold hover:bg-accent transition-colors"
-          >
-            ערוך
-          </button>
-        )}
-
-        {page.status === 'in-progress' && isClaimedByMe && (
-          <div className="flex gap-2">
-            <Link
-              href={`/library/edit/${encodeURIComponent(bookPath)}/${page.number}`}
-              className="flex-1 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 transition-colors flex items-center justify-center"
+        <div className="flex gap-2">
+          {/* מצב 1: הדף זמין - כפתור עריכה רגיל */}
+          {page.status === 'available' && (
+            <button
+              onClick={() => onClaim(page.number)}
+              className="w-full py-2 bg-primary text-on-primary rounded-lg text-sm font-bold hover:bg-accent transition-colors"
             >
               ערוך
-            </Link>
-            <button
-              onClick={() => onComplete(page.number)}
-              className="flex-1 py-2 bg-green-600 text-white rounded-lg text-sm font-bold hover:bg-green-700 transition-colors flex items-center justify-center"
-            >
-              סיים
             </button>
-          </div>
-        )}
+          )}
+
+          {/* מצב 2: הדף בטיפול שלי - כפתורי עריכה וסיום */}
+          {page.status === 'in-progress' && isClaimedByMe && (
+            <>
+              <Link
+                href={`/library/edit/${encodeURIComponent(bookPath)}/${page.number}`}
+                className="flex-1 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 transition-colors flex items-center justify-center"
+              >
+                ערוך
+              </Link>
+              <button
+                onClick={() => onComplete(page.number)}
+                className="flex-1 py-2 bg-green-600 text-white rounded-lg text-sm font-bold hover:bg-green-700 transition-colors flex items-center justify-center"
+              >
+                סיים
+              </button>
+            </>
+          )}
+
+          {/* מצב 3: הדף הושלם על ידי - כפתור חזרה לעריכה */}
+          {page.status === 'completed' && isClaimedByMe && (
+            <button
+              onClick={() => onClaim(page.number)}
+              className="w-full py-2 border-2 border-primary text-primary hover:bg-primary/5 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2"
+            >
+              <span className="material-symbols-outlined text-sm">history</span>
+              חזור לעריכה
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )

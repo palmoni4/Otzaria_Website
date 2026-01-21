@@ -29,16 +29,31 @@ export async function POST(request) {
         const page = await Page.findOne({ book: book._id, pageNumber });
         if (!page) return NextResponse.json({ error: 'Page not found' }, { status: 404 });
 
-        // בדיקה אם כבר תפוס ע"י משתמש אחר
+        // בדיקה 1: אם העמוד בטיפול של מישהו אחר
         if (page.status === 'in-progress' && page.claimedBy && page.claimedBy.toString() !== userId) {
              return NextResponse.json({ success: false, error: 'העמוד כבר בטיפול ע"י משתמש אחר' }, { status: 409 });
         }
 
-        // עדכון סטטוס - המרה מפורשת ל-ObjectId
+        // בדיקה 2: אם העמוד הושלם ע"י מישהו אחר
+        if (page.status === 'completed' && page.claimedBy && page.claimedBy.toString() !== userId) {
+            return NextResponse.json({ success: false, error: 'העמוד כבר הושלם ע"י משתמש אחר' }, { status: 409 });
+        }
+
+        // לוגיקה חדשה: אם הדף היה "הושלם" ועכשיו חוזר ל"בטיפול", נעדכן את מונה הספר
+        const wasCompleted = page.status === 'completed';
+
+        // עדכון סטטוס
         page.status = 'in-progress';
         page.claimedBy = new mongoose.Types.ObjectId(userId);
         page.claimedAt = new Date();
+        // מאפסים את תאריך ההשלמה כי הוא חזר לעריכה
+        page.completedAt = undefined; 
         await page.save();
+
+        if (wasCompleted) {
+            // מפחיתים 1 ממונה הדפים שהושלמו בספר
+            await Book.findByIdAndUpdate(book._id, { $inc: { completedPages: -1 } });
+        }
 
         // עדכון נקודות (אופציונלי)
         await User.findByIdAndUpdate(userId, { $inc: { points: 5 } });
