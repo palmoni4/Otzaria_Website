@@ -224,7 +224,7 @@ export default function EditorToolbar({
       <button 
         onClick={handleFinish}
         className="flex items-center gap-1.5 px-3 py-1 h-7 bg-green-600 hover:bg-green-700 text-white rounded-md shadow-sm transition-colors ml-2"
-        title="שמור, העלה קובץ וסיים"
+        title="סיים הקלדת קובץ וסמן כהושלם"
       >
         <span className="material-symbols-outlined text-sm">upload_file</span>
         <span className="text-[11px] font-bold">סיים</span>

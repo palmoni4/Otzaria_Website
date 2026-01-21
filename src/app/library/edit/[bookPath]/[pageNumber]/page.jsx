@@ -287,7 +287,7 @@ const completePageLogic = async () => {
       const result = await response.json();
 
       if (result.success) {
-        alert('✅ הטקסט הועלה בהצלחה! מסמן כהושלם...');
+        alert('✅ הטקסט הועלה בהצלחה! מסמן כהושלם.');
         await completePageLogic(); // קריאה לפונקציית הסיום
       } else {
         alert(`❌ שגיאה בהעלאה: ${result.error || 'שגיאה לא ידועה'}`);
