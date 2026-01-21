@@ -152,14 +152,9 @@ export default function BookPage() {
         await uploadPageText(pageNumber)
         setUploadDialog(null)
       },
-      onSkip: async () => {
-        await completePageWithoutUpload(pageNumber)
-        setUploadDialog(null)
-      },
       onCancel: () => setUploadDialog(null)
     })
   }
-
   const completePageWithoutUpload = async (pageNumber) => {
     try {
       const pageId = pages.find(p => p.number === pageNumber)?.id;
@@ -598,7 +593,7 @@ function ConfirmDialog({ pageNumber, userName, onConfirm, onCancel }) {
   )
 }
 
-function UploadDialog({ pageNumber, onConfirm, onSkip, onCancel }) {
+function UploadDialog({ pageNumber, onConfirm, onCancel }) {
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={onCancel}>
       <div className="glass-strong rounded-2xl p-8 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
@@ -627,7 +622,6 @@ function UploadDialog({ pageNumber, onConfirm, onSkip, onCancel }) {
                 <li>• הטקסט שערכת יועלה כקובץ חדש</li>
                 <li>• הקובץ יישלח לאישור מנהל</li>
                 <li>• העמוד יסומן כהושלם</li>
-                <li>• ניתן גם לדלג על ההעלאה</li>
               </ul>
             </div>
           </div>
@@ -640,13 +634,6 @@ function UploadDialog({ pageNumber, onConfirm, onSkip, onCancel }) {
           >
             <span className="material-symbols-outlined">upload</span>
             <span>כן, העלה את הטקסט</span>
-          </button>
-          <button
-            onClick={onSkip}
-            className="flex items-center justify-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-lg hover:bg-accent transition-colors font-bold"
-          >
-            <span className="material-symbols-outlined">check_circle</span>
-            <span>דלג על העלאה וסמן כהושלם</span>
           </button>
           <button
             onClick={onCancel}

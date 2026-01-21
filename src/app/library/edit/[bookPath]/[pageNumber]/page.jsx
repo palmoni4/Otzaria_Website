@@ -636,7 +636,6 @@ const completePageLogic = async () => {
         <UploadDialog
           pageNumber={pageNumber}
           onConfirm={handleUploadConfirm}
-          onSkip={completePageLogic}
           onCancel={() => setShowUploadDialog(false)}
         />
       )}
@@ -644,7 +643,7 @@ const completePageLogic = async () => {
   )
 }
 
-function UploadDialog({ pageNumber, onConfirm, onSkip, onCancel }) {
+function UploadDialog({ pageNumber, onConfirm, onCancel }) {
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[200] p-4" onClick={onCancel}>
       <div className="glass-strong bg-white rounded-2xl p-8 max-w-md w-full border border-gray-200 shadow-2xl" onClick={(e) => e.stopPropagation()}>
@@ -673,7 +672,6 @@ function UploadDialog({ pageNumber, onConfirm, onSkip, onCancel }) {
                 <li>• הטקסט שערכת יועלה כקובץ חדש</li>
                 <li>• הקובץ יישלח לאישור מנהל</li>
                 <li>• העמוד יסומן כהושלם</li>
-                <li>• ניתן גם לדלג על ההעלאה</li>
               </ul>
             </div>
           </div>
@@ -686,13 +684,6 @@ function UploadDialog({ pageNumber, onConfirm, onSkip, onCancel }) {
           >
             <span className="material-symbols-outlined">upload</span>
             <span>כן, העלה את הטקסט</span>
-          </button>
-          <button
-            onClick={onSkip}
-            className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-bold"
-          >
-            <span className="material-symbols-outlined">check_circle</span>
-            <span>דלג על העלאה וסמן כהושלם</span>
           </button>
           <button
             onClick={onCancel}
