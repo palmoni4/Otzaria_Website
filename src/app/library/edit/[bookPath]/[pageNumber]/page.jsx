@@ -45,6 +45,7 @@ export default function EditPage() {
   const [layoutOrientation, setLayoutOrientation] = useState('vertical')
   const [imagePanelWidth, setImagePanelWidth] = useState(50)
   const [isResizing, setIsResizing] = useState(false)
+  
   const [swapPanels, setSwapPanels] = useState(false)
    
   // Full Screen & Toolbar State
@@ -77,6 +78,7 @@ export default function EditPage() {
   const [userApiKey, setUserApiKey] = useState('')
   const [selectedModel, setSelectedModel] = useState('gemini-2.5-flash')
   const [customPrompt, setCustomPrompt] = useState('The text is in Hebrew, written in Rashi script...') 
+  const [showUploadDialog, setShowUploadDialog] = useState(false)
 
   // Auto Save Hook
   const { save: debouncedSave, status: saveStatus } = useAutoSave()
@@ -88,7 +90,7 @@ export default function EditPage() {
     const savedModel = localStorage.getItem('gemini_model')
     const savedPanelWidth = localStorage.getItem('imagePanelWidth')
     const savedOrientation = localStorage.getItem('layoutOrientation')
-    const savedSwap = localStorage.getItem('swapPanels') // טעינת המצב השמור
+    const savedSwap = localStorage.getItem('swapPanels')
     
     if (savedApiKey) setUserApiKey(savedApiKey)
     if (savedPrompt) setCustomPrompt(savedPrompt)
@@ -132,15 +134,23 @@ export default function EditPage() {
     if (bookData?.name) document.title = `עריכה: ${bookData.name} - עמוד ${pageNumber}`
   }, [bookData, pageNumber])
 
-  const loadPageData = async () => {
+const loadPageData = async () => {
     try {
       setLoading(true)
-      const bookRes = await fetch(`/api/book-by-name?name=${encodeURIComponent(bookPath)}`)
+      
+      const bookRes = await fetch(`/api/book/${encodeURIComponent(bookPath)}`)
       const bookResult = await bookRes.json()
 
       if (bookResult.success) {
         setBookData(bookResult.book)
-        setPageData(bookResult.pages.find(p => p.number === pageNumber))
+        
+        if (bookResult.pages && bookResult.pages.length > 0) {
+           const foundPage = bookResult.pages.find(p => p.number == pageNumber);
+           if (foundPage) {
+             setPageData(foundPage);
+             console.log('Page found with ID:', foundPage._id || foundPage.id); // לוג לוודא שה-ID קיים
+           }
+        }
       } else {
         throw new Error(bookResult.error)
       }
@@ -150,6 +160,9 @@ export default function EditPage() {
 
       if (contentResult.success && contentResult.data) {
         const { data } = contentResult
+        
+        setPageData(prev => prev || data);
+        
         setContent(data.content || '')
         setLeftColumn(data.leftColumn || '')
         setRightColumn(data.rightColumn || '')
@@ -158,6 +171,7 @@ export default function EditPage() {
         setTwoColumns(data.twoColumns || false)
       }
     } catch (err) {
+      console.error(err);
       setError(err.message || 'שגיאה בטעינה')
     } finally {
       setLoading(false)
@@ -165,6 +179,7 @@ export default function EditPage() {
   }
 
   // --- Handlers ---
+
   const togglePanelOrder = () => {
     const newState = !swapPanels
     setSwapPanels(newState)
@@ -197,6 +212,92 @@ export default function EditPage() {
     })
   }
 
+  const handleFinishClick = () => {
+    if (!session) return alert('שגיאה: אינך מחובר');
+    handleAutoSaveWrapper(content, leftColumn, rightColumn, twoColumns);
+    setShowUploadDialog(true);
+  }
+const completePageLogic = async () => {
+    try {
+      const safeBookId = bookData?.id || bookData?._id;
+      
+      const safePageId = pageData?.id || pageData?._id;
+
+      console.log('Completing page with IDs:', { bookId: safeBookId, pageId: safePageId });
+
+      if (!safePageId || !safeBookId) {
+        alert('שגיאה: חסר מזהה עמוד או ספר. נסה לרענן את העמוד.');
+        return;
+      }
+
+      const response = await fetch(`/api/book/complete-page`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          pageId: safePageId, 
+          bookId: safeBookId 
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        router.push(`/library/book/${encodeURIComponent(bookPath)}`);
+      } else {
+        alert(`❌ שגיאה מהשרת: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error completing page:', error);
+      alert('❌ שגיאה בסימון העמוד כהושלם');
+    }
+  };
+  const handleUploadConfirm = async () => {
+    try {
+      let textContent = '';
+      if (twoColumns) {
+         textContent = `${rightColumnName}:\n${rightColumn}\n\n${leftColumnName}:\n${leftColumn}`;
+      } else {
+         textContent = content;
+      }
+
+      if (!textContent.trim()) {
+        alert('❌ העמוד ריק, אין מה להעלות');
+        return;
+      }
+
+      const cleanBookName = bookPath.replace(/[^a-zA-Z0-9א-ת]/g, '_'); 
+      const fileName = `${cleanBookName}_page_${pageNumber}.txt`;
+
+      const blob = new Blob([textContent], { type: 'text/plain' });
+      const file = new File([blob], fileName, { type: 'text/plain' });
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('bookName', `${bookPath} - עמוד ${pageNumber}`);
+      
+      const userId = session.user._id || session.user.id;
+      formData.append('userId', userId);
+      formData.append('userName', session.user.name);
+
+      const response = await fetch('/api/upload-book', {
+        method: 'POST',
+        body: formData
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        alert('✅ הטקסט הועלה בהצלחה! מסמן כהושלם...');
+        await completePageLogic(); // קריאה לפונקציית הסיום
+      } else {
+        alert(`❌ שגיאה בהעלאה: ${result.error || 'שגיאה לא ידועה'}`);
+      }
+    } catch (error) {
+      console.error('Error uploading text:', error);
+      alert('❌ שגיאה בתהליך ההעלאה');
+    }
+  };
+
   const handleColumnChange = (column, newText) => {
     if (column === 'left') {
       setLeftColumn(newText)
@@ -223,10 +324,10 @@ export default function EditPage() {
       if (layoutOrientation === 'horizontal') {
         newSize = ((e.clientY - rect.top) / rect.height) * 100 
       } else {
-        if (swapPanels) { // פאנל התמונה בצד ימין
-             newSize = ((rect.right - e.clientX) / rect.width) * 100
-        } else { // פאנל התמונה בצד שמאל
+        if (swapPanels) {
              newSize = ((e.clientX - rect.left) / rect.width) * 100
+        } else {
+             newSize = ((rect.right - e.clientX) / rect.width) * 100
         }
       }
       setImagePanelWidth(Math.min(Math.max(newSize, 20), 80))
@@ -442,11 +543,10 @@ export default function EditPage() {
         selectedFont={selectedFont} setSelectedFont={setSelectedFont}
         twoColumns={twoColumns} toggleColumns={toggleColumns}
         layoutOrientation={layoutOrientation} setLayoutOrientation={setLayoutOrientation}
-        
         swapPanels={swapPanels}
         togglePanelOrder={togglePanelOrder}
         handleRemoveDigits={handleRemoveDigits}
-
+        handleFinish={handleFinishClick} // מעבירים את פונקציית פתיחת הדיאלוג
         setShowInfoDialog={setShowInfoDialog} setShowSettings={setShowSettings}
         thumbnailUrl={pageData?.thumbnail}
         isCollapsed={isToolbarCollapsed}
@@ -458,7 +558,6 @@ export default function EditPage() {
       <div className={`flex-1 flex flex-col overflow-hidden ${isFullScreen ? 'p-0' : 'p-6'}`}>
         <div className={`flex-1 flex flex-col overflow-hidden ${isFullScreen ? '' : 'glass-strong rounded-xl border border-surface-variant'}`}>
           
-          {/* שינוי תצוגה לפי בחירת המשתמש */}
           <div 
             className="flex-1 flex overflow-hidden split-container" 
             style={{ 
@@ -528,6 +627,77 @@ export default function EditPage() {
         isOpen={showInfoDialog} onClose={() => setShowInfoDialog(false)}
         editingInstructions={getInstructions()}
       />
+
+      {showUploadDialog && (
+        <UploadDialog
+          pageNumber={pageNumber}
+          onConfirm={handleUploadConfirm}
+          onSkip={completePageLogic}
+          onCancel={() => setShowUploadDialog(false)}
+        />
+      )}
+    </div>
+  )
+}
+
+function UploadDialog({ pageNumber, onConfirm, onSkip, onCancel }) {
+  return (
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[200] p-4" onClick={onCancel}>
+      <div className="glass-strong bg-white rounded-2xl p-8 max-w-md w-full border border-gray-200 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="text-center mb-6">
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <span className="material-symbols-outlined text-4xl text-green-600">
+              upload_file
+            </span>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            סיום עבודה על עמוד {pageNumber}
+          </h2>
+          <p className="text-gray-600">
+            האם ברצונך להעלות את הטקסט שערכת למערכת?
+          </p>
+        </div>
+
+        <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 mb-6">
+          <div className="flex items-start gap-3">
+            <span className="material-symbols-outlined text-blue-600 mt-0.5">
+              info
+            </span>
+            <div className="text-sm text-blue-800">
+              <p className="font-bold mb-1">מה יקרה?</p>
+              <ul className="space-y-1">
+                <li>• הטקסט שערכת יועלה כקובץ חדש</li>
+                <li>• הקובץ יישלח לאישור מנהל</li>
+                <li>• העמוד יסומן כהושלם</li>
+                <li>• ניתן גם לדלג על ההעלאה</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <button
+            onClick={onConfirm}
+            className="flex items-center justify-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-bold"
+          >
+            <span className="material-symbols-outlined">upload</span>
+            <span>כן, העלה את הטקסט</span>
+          </button>
+          <button
+            onClick={onSkip}
+            className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-bold"
+          >
+            <span className="material-symbols-outlined">check_circle</span>
+            <span>דלג על העלאה וסמן כהושלם</span>
+          </button>
+          <button
+            onClick={onCancel}
+            className="px-6 py-3 border-2 border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            ביטול
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

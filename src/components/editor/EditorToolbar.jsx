@@ -23,6 +23,7 @@ export default function EditorToolbar({
   swapPanels,
   togglePanelOrder, 
   handleRemoveDigits,
+  handleFinish,
   setShowInfoDialog,
   setShowSettings,
   thumbnailUrl,
@@ -49,7 +50,6 @@ export default function EditorToolbar({
       <span className="text-[11px] text-gray-500 font-medium whitespace-nowrap">עמוד {pageNumber} / {totalPages}</span>
       <div className="w-px h-5 bg-gray-200"></div>
 
-      {/* Zoom Controls */}
       <div className="flex items-center gap-0 bg-gray-100 rounded-md p-0.5">
         <button onClick={() => setImageZoom(Math.max(25, imageZoom - 10))} className="w-7 h-7 hover:bg-white rounded flex items-center justify-center">
           <span className="material-symbols-outlined text-sm">zoom_out</span>
@@ -65,7 +65,6 @@ export default function EditorToolbar({
 
       <div className="w-px h-5 bg-gray-200"></div>
 
-      {/* OCR Method Selector */}
       <div className="flex items-center gap-0 bg-gray-100 rounded-md p-0.5">
         <button 
           onClick={() => setOcrMethod('ocrwin')} 
@@ -191,7 +190,6 @@ export default function EditorToolbar({
 
       <div className="w-px h-5 bg-gray-200"></div>
 
-      {/* כפתור ניקוי ספרות */}
       <button 
         onClick={handleRemoveDigits} 
         className="flex items-center justify-center w-7 h-7 bg-white hover:bg-red-50 text-gray-600 hover:text-red-600 rounded-md border border-gray-200"
@@ -220,6 +218,17 @@ export default function EditorToolbar({
         </select>
         <span className="material-symbols-outlined text-sm absolute left-1 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">expand_more</span>
       </div>
+
+      <div className="w-px h-5 bg-gray-200"></div>
+
+      <button 
+        onClick={handleFinish}
+        className="flex items-center gap-1.5 px-3 py-1 h-7 bg-green-600 hover:bg-green-700 text-white rounded-md shadow-sm transition-colors ml-2"
+        title="שמור, העלה קובץ וסיים"
+      >
+        <span className="material-symbols-outlined text-sm">upload_file</span>
+        <span className="text-[11px] font-bold">סיים</span>
+      </button>
 
       <div className="w-px h-5 bg-gray-200"></div>
 
@@ -263,7 +272,6 @@ export default function EditorToolbar({
     </div>
   );
 
-  // תצוגה במצב מקופל
   if (isCollapsed) {
     return (
       <div 
@@ -285,7 +293,6 @@ export default function EditorToolbar({
           
           {swapPanels ? TextTools : ImageTools}
 
-          {/* --- כפתור אמצעי להחלפת צדדים --- */}
           <div className="flex items-center px-2">
             <button
               onClick={togglePanelOrder}
