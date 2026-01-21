@@ -22,6 +22,9 @@ export async function POST(request) {
         leftColumnName 
     } = body;
 
+    const userId = session.user._id || session.user.id;
+    const isAdmin = session.user.role === 'admin';
+
     await connectDB();
 
     let query = {};
@@ -34,7 +37,6 @@ export async function POST(request) {
     else if (body.bookPath) {
         const decodedPath = decodeURIComponent(body.bookPath);
         
-        // חיפוש גמיש: או לפי ה-slug או לפי השם המדויק
         const book = await Book.findOne({ 
             $or: [{ slug: decodedPath }, { name: decodedPath }] 
         });
@@ -45,26 +47,44 @@ export async function POST(request) {
         throw new Error('Missing book identifier');
     }
 
-    // עדכון העמוד (upsert=false כי העמוד חייב להיות קיים כבר מהעלאת ה-PDF)
-    const updatedPage = await Page.findOneAndUpdate(
-      query,
-      {
+    // שליפת העמוד הנוכחי לבדיקת הרשאות לפני עדכון
+    const currentPage = await Page.findOne(query);
+    if (!currentPage) return NextResponse.json({ success: false, error: 'Page not found' }, { status: 404 });
+
+    // לוגיקת הרשאות ועדכון סטטוס:
+    let updateFields = {
         content,
         isTwoColumns: twoColumns,
         rightColumn,
         leftColumn,
         rightColumnName,
         leftColumnName,
-        // מעדכן את תאריך העדכון האחרון אוטומטית בגלל timestamps: true במודל
-      },
+    };
+
+    // 1. אם הדף פנוי - המשתמש "תופס" אותו אוטומטית מעצם השמירה
+    if (currentPage.status === 'available') {
+        updateFields.status = 'in-progress';
+        updateFields.claimedBy = userId;
+        updateFields.claimedAt = new Date();
+    } 
+    // 2. אם הדף תפוס או הושלם - מוודאים שהמשתמש הוא הבעלים או מנהל
+    else {
+        const isOwner = currentPage.claimedBy?.toString() === userId;
+        if (!isOwner && !isAdmin) {
+            return NextResponse.json({ success: false, error: 'אין לך הרשאה לערוך דף זה' }, { status: 403 });
+        }
+        // אם הדף Completed, אנחנו מאפשרים עריכה (תיקון טעויות) מבלי לשנות סטטוס, אלא אם נרצה אחרת.
+        // הבקשה הייתה לאפשר עריכה "בלי להגדיר את הדף חזרה למצב עריכה", ולכן לא משנים את הסטטוס כאן.
+    }
+
+    // ביצוע העדכון
+    const updatedPage = await Page.findOneAndUpdate(
+      query,
+      updateFields,
       { new: true }
     );
 
-    if (!updatedPage) {
-        return NextResponse.json({ success: false, error: 'Page not found' }, { status: 404 });
-    }
-
-    return NextResponse.json({ success: true, message: 'נשמר בהצלחה' });
+    return NextResponse.json({ success: true, message: 'נשמר בהצלחה', pageStatus: updatedPage.status });
   } catch (error) {
     console.error('Save Content Error:', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -74,6 +94,13 @@ export async function POST(request) {
 // שליפת תוכן (טעינה בעת פתיחת העורך)
 export async function GET(request) {
     try {
+        const session = await getServerSession(authOptions);
+        // מאפשרים כניסה רק למחוברים, אך הבדיקה הפרטנית תהיה למטה
+        if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+        const userId = session.user._id || session.user.id;
+        const isAdmin = session.user.role === 'admin';
+
         const { searchParams } = new URL(request.url);
         const bookPath = searchParams.get('bookPath');
         const pageNumber = searchParams.get('pageNumber');
@@ -84,10 +111,8 @@ export async function GET(request) {
 
         await connectDB();
 
-        // פענוח ה-URL (למשל %D7%97%D7%95%D7%95%D7%AA -> חוות)
         const decodedPath = decodeURIComponent(bookPath);
 
-        // 1. מציאת הספר
         const book = await Book.findOne({ 
             $or: [{ slug: decodedPath }, { name: decodedPath }] 
         });
@@ -96,7 +121,6 @@ export async function GET(request) {
             return NextResponse.json({ success: false, error: 'Book not found' }, { status: 404 });
         }
 
-        // 2. מציאת העמוד
         const page = await Page.findOne({ 
             book: book._id, 
             pageNumber: parseInt(pageNumber) 
@@ -106,17 +130,41 @@ export async function GET(request) {
             return NextResponse.json({ success: false, error: 'Page not found' }, { status: 404 });
         }
 
+        // --- בדיקת הרשאות צפייה/עריכה ---
+        
+        // 1. דף פנוי (Available) - כולם יכולים להיכנס
+        if (page.status === 'available') {
+            // הגישה מותרת
+        }
+        // 2. דף בטיפול (In-Progress) - רק הבעלים והמנהלים
+        else if (page.status === 'in-progress') {
+            const isOwner = page.claimedBy?.toString() === userId;
+            if (!isOwner && !isAdmin) {
+                return NextResponse.json({ success: false, error: 'הדף נמצא בטיפול על ידי משתמש אחר' }, { status: 403 });
+            }
+        }
+        // 3. דף הושלם (Completed) - רק הבעלים והמנהלים (לצורך תיקונים)
+        else if (page.status === 'completed') {
+            const isOwner = page.claimedBy?.toString() === userId;
+            if (!isOwner && !isAdmin) {
+                return NextResponse.json({ success: false, error: 'הדף הושלם על ידי משתמש אחר ונעול לעריכה' }, { status: 403 });
+            }
+        }
+
         // 3. החזרת הנתונים ללקוח
         return NextResponse.json({ 
             success: true, 
             data: {
+                id: page._id, // חשוב להחזיר ID לשימוש ב-Update
                 content: page.content || '',
                 isTwoColumns: page.isTwoColumns || false,
-                twoColumns: page.isTwoColumns || false, // תאימות לשמות משתנים בקלאיינט
+                twoColumns: page.isTwoColumns || false,
                 rightColumn: page.rightColumn || '',
                 leftColumn: page.leftColumn || '',
                 rightColumnName: page.rightColumnName || 'חלק 1',
-                leftColumnName: page.leftColumnName || 'חלק 2'
+                leftColumnName: page.leftColumnName || 'חלק 2',
+                status: page.status,
+                claimedBy: page.claimedBy
             }
         });
 
