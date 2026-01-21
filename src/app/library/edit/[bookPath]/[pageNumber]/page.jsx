@@ -518,12 +518,9 @@ const completePageLogic = async () => {
         
         setSelectionRect(null)
         setIsSelectionMode(false)
-        
-        setIsOCRBlocking(false)
 
     } catch (e) {
         if (!cancelOCRRef.current) {
-            setIsOCRBlocking(false)
             alert('שגיאה ב-OCR: ' + e.message)
         }
     } finally {
