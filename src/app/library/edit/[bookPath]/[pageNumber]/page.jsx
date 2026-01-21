@@ -42,10 +42,9 @@ export default function EditPage() {
    
   // Layout State
   const [imageZoom, setImageZoom] = useState(100)
-  const [layoutOrientation, setLayoutOrientation] = useState('vertical') // vertical = side by side in row
+  const [layoutOrientation, setLayoutOrientation] = useState('vertical')
   const [imagePanelWidth, setImagePanelWidth] = useState(50)
   const [isResizing, setIsResizing] = useState(false)
-  
   const [swapPanels, setSwapPanels] = useState(false)
    
   // Full Screen & Toolbar State
@@ -89,7 +88,7 @@ export default function EditPage() {
     const savedModel = localStorage.getItem('gemini_model')
     const savedPanelWidth = localStorage.getItem('imagePanelWidth')
     const savedOrientation = localStorage.getItem('layoutOrientation')
-    const savedSwap = localStorage.getItem('swapPanels') // טעינת הגדרת החלפת צדדים
+    const savedSwap = localStorage.getItem('swapPanels') // טעינת המצב השמור
     
     if (savedApiKey) setUserApiKey(savedApiKey)
     if (savedPrompt) setCustomPrompt(savedPrompt)
@@ -166,12 +165,30 @@ export default function EditPage() {
   }
 
   // --- Handlers ---
-
   const togglePanelOrder = () => {
     const newState = !swapPanels
     setSwapPanels(newState)
     localStorage.setItem('swapPanels', newState.toString())
   }
+
+  const handleRemoveDigits = () => {
+    if (!window.confirm('האם אתה בטוח שברצונך למחוק את כל הספרות (0-9) מהטקסט?')) return;
+
+    const regex = /[0-9]/g; 
+
+    if (twoColumns) {
+      const newRight = rightColumn.replace(regex, '');
+      const newLeft = leftColumn.replace(regex, '');
+      
+      setRightColumn(newRight);
+      setLeftColumn(newLeft);
+      handleAutoSaveWrapper(content, newLeft, newRight, true);
+    } else {
+      const newContent = content.replace(regex, '');
+      setContent(newContent);
+      handleAutoSaveWrapper(newContent, leftColumn, rightColumn, false);
+    }
+  };
 
   const handleAutoSaveWrapper = (newContent, left = leftColumn, right = rightColumn, two = twoColumns) => {
     debouncedSave({
@@ -195,7 +212,6 @@ export default function EditPage() {
     setIsResizing(true)
   }
 
-  // Resize Effect - מעודכן לתמיכה בהחלפת צדדים
   useEffect(() => {
     if (!isResizing) return
     const handleMouseMove = (e) => {
@@ -205,13 +221,12 @@ export default function EditPage() {
       
       let newSize 
       if (layoutOrientation === 'horizontal') {
-        // מצב "אנכי" ויזואלית (שורה אחת מעל השניה) - חישוב גובה
         newSize = ((e.clientY - rect.top) / rect.height) * 100 
       } else {
         if (swapPanels) {
-            newSize = ((e.clientX - rect.left) / rect.width) * 100
+             newSize = ((e.clientX - rect.left) / rect.width) * 100
         } else {
-            newSize = ((rect.right - e.clientX) / rect.width) * 100
+             newSize = ((rect.right - e.clientX) / rect.width) * 100
         }
       }
       setImagePanelWidth(Math.min(Math.max(newSize, 20), 80))
@@ -428,10 +443,10 @@ export default function EditPage() {
         twoColumns={twoColumns} toggleColumns={toggleColumns}
         layoutOrientation={layoutOrientation} setLayoutOrientation={setLayoutOrientation}
         
-        // --- חדש: פרופס להחלפת סדר ---
         swapPanels={swapPanels}
         togglePanelOrder={togglePanelOrder}
-        
+        handleRemoveDigits={handleRemoveDigits}
+
         setShowInfoDialog={setShowInfoDialog} setShowSettings={setShowSettings}
         thumbnailUrl={pageData?.thumbnail}
         isCollapsed={isToolbarCollapsed}
@@ -443,6 +458,7 @@ export default function EditPage() {
       <div className={`flex-1 flex flex-col overflow-hidden ${isFullScreen ? 'p-0' : 'p-6'}`}>
         <div className={`flex-1 flex flex-col overflow-hidden ${isFullScreen ? '' : 'glass-strong rounded-xl border border-surface-variant'}`}>
           
+          {/* שינוי תצוגה לפי בחירת המשתמש */}
           <div 
             className="flex-1 flex overflow-hidden split-container" 
             style={{ 
