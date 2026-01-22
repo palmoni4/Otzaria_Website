@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import mongoose from 'mongoose';
 import connectDB from '@/lib/db';
 import Page from '@/models/Page';
 import Book from '@/models/Book';
@@ -7,29 +8,49 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 export async function POST(request) {
+  await connectDB();
+
+  const dbSession = await mongoose.startSession();
+  
   try {
     const session = await getServerSession(authOptions);
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { pageId } = await request.json();
-    await connectDB();
 
+    dbSession.startTransaction();
+
+    // שלב א: עדכון העמוד
     const page = await Page.findOneAndUpdate(
       { _id: pageId, claimedBy: session.user._id, status: 'completed' },
       { 
         $set: { status: 'in-progress' }, 
         $unset: { completedAt: 1 }  
       },
-      { new: true }
+      { new: true, session: dbSession }
     ).populate('claimedBy', 'name email');
 
     if (!page) {
+      // אם העמוד לא נמצא, מבטלים הכל
+      await dbSession.abortTransaction();
       return NextResponse.json({ error: 'Page update failed or page not found' }, { status: 400 });
     }
 
-    await Book.findByIdAndUpdate(page.book, { $inc: { completedPages: -1 } });
+    // שלב ב: עדכון הספר (הפחתת מונה)
+    await Book.findByIdAndUpdate(
+        page.book, 
+        { $inc: { completedPages: -1 } }, 
+        { session: dbSession }
+    );
 
-    await User.findByIdAndUpdate(session.user._id, { $inc: { points: -10 } });
+    // שלב ג: עדכון המשתמש (הפחתת ניקוד)
+    await User.findByIdAndUpdate(
+        session.user._id, 
+        { $inc: { points: -10 } }, 
+        { session: dbSession }
+    );
+
+    await dbSession.commitTransaction();
 
     return NextResponse.json({ 
         success: true, 
@@ -47,7 +68,12 @@ export async function POST(request) {
     });
 
   } catch (error) {
+    if (dbSession.inTransaction()) {
+      await dbSession.abortTransaction();
+    }
     console.error('Error uncompleting page:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
+  } finally {
+    await dbSession.endSession();
   }
 }
