@@ -147,6 +147,7 @@ export default function EditPage() {
   const loadPageData = async () => {
     try {
       setLoading(true)
+      setError(null)
       const bookRes = await fetch(`/api/book/${encodeURIComponent(bookPath)}`)
       const bookResult = await bookRes.json()
 
@@ -760,3 +761,4 @@ function UploadDialog({ pageNumber, onConfirm, onSkip, onCancel }) {
   )
 
 }
+
