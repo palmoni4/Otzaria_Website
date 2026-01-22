@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter, useParams } from 'next/navigation'
-import Link from 'next/link'
 
 // Components
 import EditorHeader from '@/components/editor/EditorHeader'
@@ -65,6 +64,7 @@ export default function EditPage() {
   const [showFindReplace, setShowFindReplace] = useState(false)
   const [findText, setFindText] = useState('')
   const [replaceText, setReplaceText] = useState('')
+  const [savedSearches, setSavedSearches] = useState([])
 
   // Selection & OCR State
   const [isSelectionMode, setIsSelectionMode] = useState(false)
@@ -82,10 +82,9 @@ export default function EditPage() {
   const [customPrompt, setCustomPrompt] = useState('The text is in Hebrew, written in Rashi script...') 
   const [showUploadDialog, setShowUploadDialog] = useState(false)
 
-  // Auto Save Hook
   const { save: debouncedSave, status: saveStatus } = useAutoSave()
 
-  // Load Settings
+  // Load Settings & Saved Searches
   useEffect(() => {
     const savedApiKey = localStorage.getItem('gemini_api_key')
     const savedPrompt = localStorage.getItem('gemini_prompt')
@@ -93,7 +92,6 @@ export default function EditPage() {
     const savedPanelWidth = localStorage.getItem('imagePanelWidth')
     const savedOrientation = localStorage.getItem('layoutOrientation')
     const savedSwap = localStorage.getItem('swapPanels')
-    const savedFont = localStorage.getItem('selectedFont')
     
     if (savedApiKey) setUserApiKey(savedApiKey)
     if (savedPrompt) setCustomPrompt(savedPrompt)
@@ -101,10 +99,20 @@ export default function EditPage() {
     if (savedPanelWidth) setImagePanelWidth(parseFloat(savedPanelWidth))
     if (savedOrientation) setLayoutOrientation(savedOrientation)
     if (savedSwap) setSwapPanels(savedSwap === 'true')
-    if (savedFont) setSelectedFont(savedFont)
-  }, [])
 
-  // Full Screen Handler
+    // טעינת חיפושים שמורים מהשרת
+    if (status === 'authenticated') {
+        fetch('/api/user/saved-searches')
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && Array.isArray(data.savedSearches)) {
+                    setSavedSearches(data.savedSearches);
+                }
+            })
+            .catch(err => console.error('Failed to load saved searches from server:', err));
+    }
+  }, [status])
+
   const toggleFullScreen = async () => {
     try {
       if (!document.fullscreenElement) {
@@ -119,7 +127,6 @@ export default function EditPage() {
     }
   }
 
-  // Listener for Full Screen changes
   useEffect(() => {
     const handleFullScreenChange = () => {
       setIsFullScreen(!!document.fullscreenElement)
@@ -128,7 +135,6 @@ export default function EditPage() {
     return () => document.removeEventListener('fullscreenchange', handleFullScreenChange)
   }, [])
 
-  // Auth & Load Data
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/library/auth/login')
     else if (status === 'authenticated') loadPageData()
@@ -141,9 +147,6 @@ export default function EditPage() {
   const loadPageData = async () => {
     try {
       setLoading(true)
-      setError(null) // איפוס שגיאות קודמות
-      
-      // שליפת פרטי הספר (לצורך הכותרת וכו')
       const bookRes = await fetch(`/api/book/${encodeURIComponent(bookPath)}`)
       const bookResult = await bookRes.json()
 
@@ -151,38 +154,24 @@ export default function EditPage() {
         setBookData(bookResult.book)
         if (bookResult.pages && bookResult.pages.length > 0) {
            const foundPage = bookResult.pages.find(p => p.number === pageNumber);
-           if (foundPage) {
-             setPageData(foundPage);
-           }
+           if (foundPage) setPageData(foundPage);
         }
       } else {
         throw new Error(bookResult.error)
       }
 
-      // שליפת תוכן העמוד - כאן תתבצע בדיקת ההרשאות בשרת
       const contentRes = await fetch(`/api/page-content?bookPath=${encodeURIComponent(bookPath)}&pageNumber=${pageNumber}`)
-      
-      // טיפול ספציפי בשגיאת הרשאות (403)
-      if (contentRes.status === 403) {
-          const errorData = await contentRes.json();
-          throw new Error(errorData.error || 'אין לך הרשאה לערוך דף זה');
-      }
-
       const contentResult = await contentRes.json()
 
       if (contentResult.success && contentResult.data) {
         const { data } = contentResult
-        
-        // עדכון נתונים לעורך
-        setPageData(prev => ({...prev, ...data})); // מיזוג נתונים
+        setPageData(prev => prev || data);
         setContent(data.content || '')
         setLeftColumn(data.leftColumn || '')
         setRightColumn(data.rightColumn || '')
         setRightColumnName(data.rightColumnName || 'חלק 1')
         setLeftColumnName(data.leftColumnName || 'חלק 2')
         setTwoColumns(data.twoColumns || false)
-      } else {
-          throw new Error(contentResult.error || 'שגיאה בטעינת תוכן העמוד');
       }
     } catch (err) {
       console.error(err);
@@ -192,12 +181,86 @@ export default function EditPage() {
     }
   }
 
-  // --- Handlers ---
+  // --- Server Persistence Logic ---
 
-  const handleFontChange = (newFont) => {
-    setSelectedFont(newFont)
-    localStorage.setItem('selectedFont', newFont)
-  }
+  const saveSearchesToServer = async (updatedList) => {
+
+      setSavedSearches(updatedList); 
+      
+      try {
+          const res = await fetch('/api/user/saved-searches', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ savedSearches: updatedList })
+          });
+          
+          if (!res.ok) throw new Error('Failed to save');
+          
+      } catch (err) {
+          console.error('Failed to save searches to server', err);
+          alert('שגיאה בשמירת הנתונים בשרת. הנתונים נשמרו מקומית בלבד עד לריענון.');
+      }
+  };
+
+  const addSavedSearch = (label, newFindText, newReplaceText) => {
+    const newSearch = {
+      id: Date.now().toString(),
+      label: label || newFindText,
+      findText: newFindText,
+      replaceText: newReplaceText,
+    };
+    saveSearchesToServer([...savedSearches, newSearch]);
+  };
+
+  const removeSavedSearch = (id) => {
+    saveSearchesToServer(savedSearches.filter(s => s.id !== id));
+  };
+
+  const moveSearch = (index, direction) => {
+    const newSearches = [...savedSearches];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex >= 0 && targetIndex < newSearches.length) {
+      [newSearches[index], newSearches[targetIndex]] = [newSearches[targetIndex], newSearches[index]];
+      saveSearchesToServer(newSearches);
+    }
+  };
+
+  const runAllSavedReplacements = () => {
+    if (savedSearches.length === 0) return;
+    
+    const processPattern = (str) => str.replaceAll('^13', '\n');
+    let tempRight = rightColumn;
+    let tempLeft = leftColumn;
+    let tempContent = content;
+    let totalChanges = 0;
+
+    savedSearches.forEach(search => {
+      const pattern = processPattern(search.findText);
+      const replacement = processPattern(search.replaceText);
+      const escapedPattern = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\n/g, '\\n');
+      const regex = new RegExp(escapedPattern, 'g');
+
+      if (twoColumns) {
+        tempRight = tempRight.replace(regex, replacement);
+        tempLeft = tempLeft.replace(regex, replacement);
+      } else {
+        tempContent = tempContent.replace(regex, replacement);
+      }
+      totalChanges++;
+    });
+
+    if (totalChanges > 0) {
+      if (twoColumns) {
+        setRightColumn(tempRight);
+        setLeftColumn(tempLeft);
+        handleAutoSaveWrapper(content, tempLeft, tempRight, true);
+      } else {
+        setContent(tempContent);
+        handleAutoSaveWrapper(tempContent, leftColumn, rightColumn, false);
+      }
+      alert('כל ההחלפות השמורות בוצעו בהצלחה');
+    }
+  };
 
   const togglePanelOrder = () => {
     const newState = !swapPanels
@@ -207,13 +270,10 @@ export default function EditPage() {
 
   const handleRemoveDigits = () => {
     if (!window.confirm('האם אתה בטוח שברצונך למחוק את כל הספרות (0-9) מהטקסט?')) return;
-
     const regex = /[0-9]/g; 
-
     if (twoColumns) {
       const newRight = rightColumn.replace(regex, '');
       const newLeft = leftColumn.replace(regex, '');
-      
       setRightColumn(newRight);
       setLeftColumn(newLeft);
       handleAutoSaveWrapper(content, newLeft, newRight, true);
@@ -236,76 +296,49 @@ export default function EditPage() {
     handleAutoSaveWrapper(content, leftColumn, rightColumn, twoColumns);
     setShowUploadDialog(true);
   }
-const completePageLogic = async () => {
+
+  const completePageLogic = async () => {
     try {
       const safeBookId = bookData?.id || bookData?._id;
-      
       const safePageId = pageData?.id || pageData?._id;
-
-      if (!safePageId || !safeBookId) {
-        alert('שגיאה: חסר מזהה עמוד או ספר. נסה לרענן את העמוד.');
-        return;
-      }
+      if (!safePageId || !safeBookId) return alert('שגיאה מזהים חסרים');
 
       const response = await fetch(`/api/book/complete-page`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          pageId: safePageId, 
-          bookId: safeBookId 
-        })
+        body: JSON.stringify({ pageId: safePageId, bookId: safeBookId })
       });
-      
       const result = await response.json();
-      
-      if (result.success) {
-        router.push(`/library/book/${encodeURIComponent(bookPath)}`);
-      } else {
-        alert(`❌ שגיאה מהשרת: ${result.error}`);
-      }
+      if (result.success) router.push(`/library/book/${encodeURIComponent(bookPath)}`);
+      else alert(`❌ שגיאה מהשרת: ${result.error}`);
     } catch (error) {
       console.error('Error completing page:', error);
       alert('❌ שגיאה בסימון העמוד כהושלם');
     }
   };
+
   const handleUploadConfirm = async () => {
     try {
-      let textContent = '';
-      if (twoColumns) {
-         textContent = `${rightColumnName}:\n${rightColumn}\n\n${leftColumnName}:\n${leftColumn}`;
-      } else {
-         textContent = content;
-      }
-
-      if (!textContent.trim()) {
-        alert('❌ העמוד ריק, אין מה להעלות');
-        return;
-      }
+      let textContent = twoColumns ? `${rightColumnName}:\n${rightColumn}\n\n${leftColumnName}:\n${leftColumn}` : content;
+      if (!textContent.trim()) return alert('❌ העמוד ריק');
 
       const cleanBookName = bookPath.replace(/[^a-zA-Z0-9א-ת]/g, '_'); 
       const fileName = `${cleanBookName}_page_${pageNumber}.txt`;
-
       const blob = new Blob([textContent], { type: 'text/plain' });
       const file = new File([blob], fileName, { type: 'text/plain' });
 
       const formData = new FormData();
       formData.append('file', file);
       formData.append('bookName', `${bookPath} - עמוד ${pageNumber}`);
-      
-      const userId = session.user._id || session.user.id;
-      formData.append('userId', userId);
+      formData.append('userId', session.user._id || session.user.id);
       formData.append('userName', session.user.name);
 
-      const response = await fetch('/api/upload-book', {
-        method: 'POST',
-        body: formData
-      });
-
+      const response = await fetch('/api/upload-book', { method: 'POST', body: formData });
       const result = await response.json();
 
       if (result.success) {
         alert('✅ הטקסט הועלה בהצלחה! מסמן כהושלם.');
-        await completePageLogic(); // קריאה לפונקציית הסיום
+        await completePageLogic(); 
       } else {
         alert(`❌ שגיאה בהעלאה: ${result.error || 'שגיאה לא ידועה'}`);
       }
@@ -336,23 +369,15 @@ const completePageLogic = async () => {
       const container = document.querySelector('.split-container')
       if (!container) return
       const rect = container.getBoundingClientRect()
-      
       let newSize 
       if (layoutOrientation === 'horizontal') {
-        // בפריסה אופקית (תמונה למעלה/למטה)
         newSize = swapPanels 
-          ? ((rect.bottom - e.clientY) / rect.height) * 100 // תמונה למטה: מרחק מהתחתית
-          : ((e.clientY - rect.top) / rect.height) * 100    // תמונה למעלה: מרחק מהלמעלה
+          ? ((rect.bottom - e.clientY) / rect.height) * 100 
+          : ((e.clientY - rect.top) / rect.height) * 100    
       } else {
-        // בפריסה אנכית (ימין/שמאל) - מותאם ל-RTL
-        if (swapPanels) { 
-            // פאנל התמונה בצד שמאל (בגלל row-reverse ב-RTL)
-            newSize = ((e.clientX - rect.left) / rect.width) * 100
-        } else { 
-            // פאנל התמונה בצד ימין (ברירת מחדל ב-RTL)
-            // החישוב צריך להיות המרחק מהקצה הימני
-            newSize = ((rect.right - e.clientX) / rect.width) * 100
-        }
+        newSize = swapPanels 
+            ? ((e.clientX - rect.left) / rect.width) * 100
+            : ((rect.right - e.clientX) / rect.width) * 100
       }
       setImagePanelWidth(Math.min(Math.max(newSize, 20), 80))
     }
@@ -380,25 +405,19 @@ const completePageLogic = async () => {
 
   const handleDownloadImage = async () => {
     if (!pageData?.thumbnail) return alert('אין תמונה להורדה');
-    
     try {
       const response = await fetch(pageData.thumbnail);
       const blob = await response.blob();
-      
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      
       const cleanBookName = bookData?.name?.replace(/[^a-zA-Z0-9א-ת]/g, '_') || 'book';
-      link.download = `${cleanBookName}_page_${pageNumber}.${(blob.type.split('/')[1] || 'jpg').replace('jpeg', 'jpg')}`;
-      
+      link.download = `${cleanBookName}_page_${pageNumber}.jpg`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-      
     } catch (error) {
-      console.error('Download failed:', error);
       window.open(pageData.thumbnail, '_blank');
     }
   };
@@ -412,24 +431,24 @@ const completePageLogic = async () => {
     handleAutoSaveWrapper(content, '', content, true)
   }
 
-  const handleFindReplace = (replaceAll = false) => {
-    if (!findText) return alert('הזן טקסט לחיפוש');
+  const handleFindReplace = (replaceAll = false, overrideFind = null, overrideReplace = null) => {
+    const textToFind = overrideFind !== null ? overrideFind : findText;
+    const textToReplace = overrideReplace !== null ? overrideReplace : replaceText;
+
+    if (!textToFind) return alert('הזן טקסט לחיפוש');
     
     const processPattern = (str) => str.replaceAll('^13', '\n');
     
-    const pattern = processPattern(findText);
-    const replacement = processPattern(replaceText);
-    
+    const pattern = processPattern(textToFind);
+    const replacement = processPattern(textToReplace || ''); 
+
     let totalOccurrences = 0;
 
     const executeReplace = (text) => {
       if (!text || !pattern) return text;
-      
       const parts = text.split(pattern);
       const count = parts.length - 1; 
-      
       if (count === 0) return text;
-
       if (replaceAll) {
         totalOccurrences += count;
         return parts.join(replacement);
@@ -442,7 +461,6 @@ const completePageLogic = async () => {
     if (twoColumns) {
       const newRight = executeReplace(rightColumn);
       const newLeft = executeReplace(leftColumn);
-      
       if (totalOccurrences > 0) {
         setRightColumn(newRight);
         setLeftColumn(newLeft);
@@ -450,33 +468,22 @@ const completePageLogic = async () => {
       }
     } else {
       const newContent = executeReplace(content);
-      
       if (totalOccurrences > 0) {
         setContent(newContent);
         handleAutoSaveWrapper(newContent, leftColumn, rightColumn, false);
       }
     }
-
-    if (totalOccurrences > 0) {
-      alert(`ההחלפה בוצעה בהצלחה! הוחלפו ${totalOccurrences} מופעים.`);
-    } else {
-      alert('לא נמצאו תוצאות התואמות לחיפוש.');
-    }
+    if (totalOccurrences > 0) alert(`ההחלפה בוצעה בהצלחה! הוחלפו ${totalOccurrences} מופעים.`);
+    else alert('לא נמצאו תוצאות התואמות לחיפוש.');
   };
 
   const insertTag = (tag) => {
     let activeEl = document.activeElement;
-
     if (!activeEl || activeEl.tagName !== 'TEXTAREA') {
-        if (activeTextarea === 'left') {
-            activeEl = document.querySelector('textarea[data-column="left"]');
-        } else if (activeTextarea === 'right') {
-            activeEl = document.querySelector('textarea[data-column="right"]');
-        } else {
-            activeEl = document.querySelector('.editor-container textarea');
-        }
+        if (activeTextarea === 'left') activeEl = document.querySelector('textarea[data-column="left"]');
+        else if (activeTextarea === 'right') activeEl = document.querySelector('textarea[data-column="right"]');
+        else activeEl = document.querySelector('.editor-container textarea');
     }
-
     if (!activeEl || activeEl.tagName !== 'TEXTAREA') return;
     
     const start = activeEl.selectionStart;
@@ -487,12 +494,9 @@ const completePageLogic = async () => {
     const after = text.substring(end);
     
     let insertion = `<${tag}>${selected}</${tag}>`
-    if (['h1', 'h2', 'h3'].includes(tag)) {
-        insertion = `\n<${tag}>${selected}</${tag}>\n`
-    }
+    if (['h1', 'h2', 'h3'].includes(tag)) insertion = `\n<${tag}>${selected}</${tag}>\n`
     
     const newText = before + insertion + after;
-    
     const col = activeEl.getAttribute('data-column');
     if (col === 'right') handleColumnChange('right', newText);
     else if (col === 'left') handleColumnChange('left', newText);
@@ -510,7 +514,6 @@ const completePageLogic = async () => {
 
   const handleOCR = async () => {
     if (!selectionRect) return alert('בחר אזור')
-    
     cancelOCRRef.current = false
     setIsOCRBlocking(true)
 
@@ -522,33 +525,21 @@ const completePageLogic = async () => {
     canvas.height = selectionRect.height
     const ctx = canvas.getContext('2d')
     ctx.drawImage(img, selectionRect.x, selectionRect.y, selectionRect.width, selectionRect.height, 0, 0, selectionRect.width, selectionRect.height)
-    
     const croppedBlob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.95))
     
     try {
         let text = ''
+        if (cancelOCRRef.current) return
+        if (ocrMethod === 'gemini') text = await performGeminiOCR(croppedBlob, userApiKey, selectedModel, customPrompt)
+        else if (ocrMethod === 'ocrwin') text = await performOCRWin(croppedBlob)
+        else text = await performTesseractOCR(croppedBlob)
         
         if (cancelOCRRef.current) return
-
-        if (ocrMethod === 'gemini') {
-            text = await performGeminiOCR(croppedBlob, userApiKey, selectedModel, customPrompt)
-        } else if (ocrMethod === 'ocrwin') { 
-            text = await performOCRWin(croppedBlob)
-        } else {
-            text = await performTesseractOCR(croppedBlob)
-        }
-        
-        if (cancelOCRRef.current) {
-            console.log('OCR process was cancelled by user')
-            return
-        }
-
         if (!text) {
              setIsOCRBlocking(false)
              return alert('לא זוהה טקסט')
         }
         
-        // עדכון הטקסט
         if (twoColumns) {
             const newRight = rightColumn + '\n' + text
             setRightColumn(newRight)
@@ -558,14 +549,10 @@ const completePageLogic = async () => {
             setContent(newContent)
             handleAutoSaveWrapper(newContent)
         }
-        
         setSelectionRect(null)
         setIsSelectionMode(false)
-
     } catch (e) {
-        if (!cancelOCRRef.current) {
-            alert('שגיאה ב-OCR: ' + e.message)
-        }
+        if (!cancelOCRRef.current) alert('שגיאה ב-OCR: ' + e.message)
     } finally {
         setIsOCRBlocking(false)
     }
@@ -583,47 +570,9 @@ const completePageLogic = async () => {
       }
   }
 
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="text-center">
-        <span className="material-symbols-outlined animate-spin text-6xl text-primary mb-4 block">
-          progress_activity
-        </span>
-        <p className="text-on-surface/70">טוען נתונים...</p>
-      </div>
-    </div>
-  )
+  if (loading) return <div className="text-center p-20">טוען...</div>
+  if (error) return <div className="text-center p-20 text-red-500">{error}</div>
 
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background px-4">
-        <div className="text-center glass-strong p-10 rounded-2xl max-w-lg w-full shadow-xl border border-red-100">
-          <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
-            <span className="material-symbols-outlined text-5xl text-red-500">
-              lock
-            </span>
-          </div>
-          <h2 className="text-2xl font-bold text-on-surface mb-3">אין גישה לדף זה</h2>
-          <p className="text-on-surface/70 mb-8 text-lg leading-relaxed">{error}</p>
-          <div className="flex gap-4 justify-center">
-            <Link 
-              href={`/library/book/${encodeURIComponent(bookPath)}`}
-              className="px-6 py-3 bg-primary text-on-primary rounded-xl hover:bg-accent transition-colors font-medium flex items-center gap-2"
-            >
-              <span className="material-symbols-outlined">arrow_back</span>
-              חזרה לרשימת הדפים
-            </Link>
-            <Link 
-              href="/library/dashboard"
-              className="px-6 py-3 bg-surface text-on-surface border border-outline rounded-xl hover:bg-surface-variant transition-colors font-medium"
-            >
-              האיזור האישי
-            </Link>
-          </div>
-        </div>
-      </div>
-    )
-  }
   return (
     <div 
       className={`bg-background flex flex-col overflow-hidden transition-all duration-300 ${
@@ -631,7 +580,6 @@ const completePageLogic = async () => {
       }`}
       style={{ cursor: isResizing ? 'col-resize' : 'default' }}
     >
-      
       {!isFullScreen && (
         <EditorHeader 
           bookName={bookData?.name} 
@@ -642,7 +590,6 @@ const completePageLogic = async () => {
           onToggleFullScreen={toggleFullScreen}
         />
       )}
-      
       <EditorToolbar 
         pageNumber={pageNumber} totalPages={bookData?.totalPages}
         imageZoom={imageZoom} setImageZoom={setImageZoom}
@@ -652,14 +599,14 @@ const completePageLogic = async () => {
         handleOCRSelection={handleOCR} setSelectionRect={setSelectionRect}
         setIsSelectionMode={setIsSelectionMode} insertTag={insertTag}
         setShowFindReplace={setShowFindReplace}
-        selectedFont={selectedFont} setSelectedFont={handleFontChange}
+        selectedFont={selectedFont} setSelectedFont={setSelectedFont}
         twoColumns={twoColumns} toggleColumns={toggleColumns}
         layoutOrientation={layoutOrientation} setLayoutOrientation={setLayoutOrientation}
         swapPanels={swapPanels}
         handleDownloadImage={handleDownloadImage}
         togglePanelOrder={togglePanelOrder}
         handleRemoveDigits={handleRemoveDigits}
-        handleFinish={handleFinishClick} // מעבירים את פונקציית פתיחת הדיאלוג
+        handleFinish={handleFinishClick} 
         setShowInfoDialog={setShowInfoDialog} setShowSettings={setShowSettings}
         thumbnailUrl={pageData?.thumbnail}
         isCollapsed={isToolbarCollapsed}
@@ -670,7 +617,6 @@ const completePageLogic = async () => {
 
       <div className={`flex-1 flex flex-col overflow-hidden ${isFullScreen ? 'p-0' : 'p-6'}`}>
         <div className={`flex-1 flex flex-col overflow-hidden ${isFullScreen ? '' : 'glass-strong rounded-xl border border-surface-variant'}`}>
-          
           <div 
             className="flex-1 flex overflow-hidden split-container" 
             style={{ 
@@ -689,7 +635,6 @@ const completePageLogic = async () => {
               layoutOrientation={layoutOrientation} imagePanelWidth={imagePanelWidth}
               isResizing={isResizing} handleResizeStart={handleResizeStart}
             />
-
             <TextEditor 
               content={content} leftColumn={leftColumn} rightColumn={rightColumn}
               twoColumns={twoColumns} rightColumnName={rightColumnName} leftColumnName={leftColumnName}
@@ -726,6 +671,11 @@ const completePageLogic = async () => {
         findText={findText} setFindText={setFindText}
         replaceText={replaceText} setReplaceText={setReplaceText}
         handleFindReplace={handleFindReplace}
+        savedSearches={savedSearches}
+        addSavedSearch={addSavedSearch}
+        removeSavedSearch={removeSavedSearch}
+        moveSearch={moveSearch}
+        runAllSavedReplacements={runAllSavedReplacements}
       />
 
       <SplitDialog 
@@ -744,19 +694,13 @@ const completePageLogic = async () => {
       {isOCRBlocking && (
         <div className="fixed inset-0 z-[300] bg-black/60 backdrop-blur-sm flex items-center justify-center transition-all duration-300">
           <div className="bg-white/10 border border-white/20 p-8 rounded-2xl flex flex-col items-center shadow-2xl backdrop-blur-md">
-            
             <div className="relative w-16 h-16 mb-6">
               <div className="absolute inset-0 border-4 border-t-blue-500 border-r-transparent border-b-blue-500 border-l-transparent rounded-full animate-spin"></div>
               <div className="absolute inset-2 border-4 border-t-purple-500 border-r-transparent border-b-purple-500 border-l-transparent rounded-full animate-spin reverse-spin opacity-70" style={{ animationDirection: 'reverse', animationDuration: '2s' }}></div>
             </div>
-
             <h3 className="text-white text-xl font-bold mb-2 tracking-wide">מזהה טקסט...</h3>
             <p className="text-gray-300 text-sm mb-6">אנא המתן, הפעולה עשויה לקחת מספר שניות</p>
-
-            <button 
-              onClick={handleCancelOCR}
-              className="px-6 py-2 bg-red-500/20 hover:bg-red-500/40 text-red-200 border border-red-500/50 rounded-full transition-colors flex items-center gap-2 text-sm font-medium"
-            >
+            <button onClick={handleCancelOCR} className="px-6 py-2 bg-red-500/20 hover:bg-red-500/40 text-red-200 border border-red-500/50 rounded-full transition-colors flex items-center gap-2 text-sm font-medium">
               <span className="material-symbols-outlined text-sm">close</span>
               ביטול
             </button>
@@ -768,6 +712,7 @@ const completePageLogic = async () => {
         <UploadDialog
           pageNumber={pageNumber}
           onConfirm={handleUploadConfirm}
+          onSkip={completePageLogic}
           onCancel={() => setShowUploadDialog(false)}
         />
       )}
@@ -775,29 +720,20 @@ const completePageLogic = async () => {
   )
 }
 
-function UploadDialog({ pageNumber, onConfirm, onCancel }) {
+function UploadDialog({ pageNumber, onConfirm, onSkip, onCancel }) {
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[200] p-4" onClick={onCancel}>
       <div className="glass-strong bg-white rounded-2xl p-8 max-w-md w-full border border-gray-200 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="text-center mb-6">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <span className="material-symbols-outlined text-4xl text-green-600">
-              upload_file
-            </span>
+            <span className="material-symbols-outlined text-4xl text-green-600">upload_file</span>
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            סיום עבודה על עמוד {pageNumber}
-          </h2>
-          <p className="text-gray-600">
-            האם ברצונך להעלות את הטקסט שערכת למערכת?
-          </p>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">סיום עבודה על עמוד {pageNumber}</h2>
+          <p className="text-gray-600">האם ברצונך להעלות את הטקסט שערכת למערכת?</p>
         </div>
-
         <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 mb-6">
           <div className="flex items-start gap-3">
-            <span className="material-symbols-outlined text-blue-600 mt-0.5">
-              info
-            </span>
+            <span className="material-symbols-outlined text-blue-600 mt-0.5">info</span>
             <div className="text-sm text-blue-800">
               <p className="font-bold mb-1">מה יקרה?</p>
               <ul className="space-y-1">
@@ -808,23 +744,17 @@ function UploadDialog({ pageNumber, onConfirm, onCancel }) {
             </div>
           </div>
         </div>
-
         <div className="flex flex-col gap-3">
-          <button
-            onClick={onConfirm}
-            className="flex items-center justify-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-bold"
-          >
+          <button onClick={onConfirm} className="flex items-center justify-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-bold">
             <span className="material-symbols-outlined">upload</span>
             <span>כן, העלה את הטקסט</span>
           </button>
-          <button
-            onClick={onCancel}
-            className="px-6 py-3 border-2 border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            ביטול
+          <button onClick={onSkip} className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-bold">
+            <span className="material-symbols-outlined">check_circle</span>
+            <span>דלג על העלאה וסמן כהושלם</span>
           </button>
+          <button onClick={onCancel} className="px-6 py-3 border-2 border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">ביטול</button>
         </div>
-        
       </div>
     </div>
   )
