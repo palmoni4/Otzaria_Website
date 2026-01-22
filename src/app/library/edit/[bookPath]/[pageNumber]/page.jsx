@@ -165,7 +165,7 @@ export default function EditPage() {
 
       if (contentResult.success && contentResult.data) {
         const { data } = contentResult
-        setPageData(prev => prev || data);
+        setPageData(prev => ({...prev, ...data}));
         setContent(data.content || '')
         setLeftColumn(data.leftColumn || '')
         setRightColumn(data.rightColumn || '')
@@ -758,4 +758,5 @@ function UploadDialog({ pageNumber, onConfirm, onSkip, onCancel }) {
       </div>
     </div>
   )
+
 }
