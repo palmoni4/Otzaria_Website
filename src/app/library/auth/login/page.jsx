@@ -40,6 +40,7 @@ export default function LoginPage() {
       if (result?.error) {
         setError(result.error)
       } else {
+        router.refresh()
         router.push('/library/dashboard')
         // router.refresh() // התיקון הקודם: שורה זו בוטלה כדי למנוע לחיצה כפולה
       }
