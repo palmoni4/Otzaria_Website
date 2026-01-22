@@ -41,6 +41,10 @@ export async function PUT(req) {
       { new: true }
     );
 
+    if (!updatedUser) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
     return NextResponse.json({ success: true, savedSearches: updatedUser.savedSearches });
   } catch (error) {
     console.error('Error saving searches:', error);
