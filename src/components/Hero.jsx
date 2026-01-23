@@ -117,7 +117,7 @@ export default function Hero() {
             >
               <Link href="/library/books" className="flex items-center justify-center gap-2 px-8 py-4 glass border-2 border-primary text-primary rounded-lg text-lg font-medium hover:bg-primary-container transition-colors">
                 <span className="material-symbols-outlined">library_books</span>
-                <span>עיין בספרייה</span>
+                <span>התחל לערוך</span>
               </Link>
             </motion.div>
           </motion.div>
