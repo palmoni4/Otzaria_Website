@@ -60,7 +60,7 @@ export default function EditBookInfoDialog({ book, onClose, onSave }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          bookPath: book.path || book.name,
+          bookId: book.id || book._id, 
           editingInfo
         })
       })

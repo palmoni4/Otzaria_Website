@@ -20,7 +20,7 @@ export async function GET() {
     // 1. שליפת כל הספרים
     // אנחנו משתמשים ב-lean() לביצועים מהירים יותר
     const books = await Book.find(query)
-      .select('name slug totalPages category updatedAt isHidden')
+      .select('name slug totalPages category updatedAt isHidden editingInfo') 
       .sort({ updatedAt: -1 })
       .lean();
 
@@ -66,6 +66,7 @@ export async function GET() {
         status: bookStats.completed === book.totalPages ? 'completed' : 'in-progress',
         lastUpdated: book.updatedAt,
         isHidden: book.isHidden || false,
+        editingInfo: book.editingInfo || null
       };
     });
 

@@ -11,12 +11,11 @@ export async function POST(request) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
-    const { bookPath, editingInfo } = await request.json();
+    const { bookId, editingInfo } = await request.json();
     await connectDB();
 
-    // עדכון שדה editingInfo בספר
-    const book = await Book.findOneAndUpdate(
-        { slug: bookPath }, // או לפי ID אם ה-Client שולח ID
+    const book = await Book.findByIdAndUpdate(
+        bookId,
         { editingInfo },
         { new: true }
     );
