@@ -369,16 +369,25 @@ export default function AdminBooksPage() {
                         </div>
 
                         <div className="mt-auto space-y-2">
-                            {progress === 100 && (
+                            {progress === 100 ? (
                                 <button
-                                    onClick={() => handleDownloadFullText(book)}
-                                    className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-green-600 text-white hover:bg-green-700 rounded-lg text-sm font-bold transition-all mb-1 shadow-sm"
-                                    title="הורד את כל דפי הספר כקובץ טקסט אחד"
+                                     onClick={() => handleDownloadFullText(book)}
+                                     className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-green-600 text-white hover:bg-green-700 rounded-lg text-sm font-bold transition-all mb-1 shadow-sm"
+                                     title="הורד את כל דפי הספר כקובץ טקסט אחד"
                                 >
-                                    <span className="material-symbols-outlined text-sm">download</span>
-                                    הורד טקסט מאוחד
+                                     <span className="material-symbols-outlined text-sm">download</span>
+                                     הורד טקסט מאוחד
                                 </button>
-                            )}
+                            ) : (
+                                <button
+                                     onClick={() => handleDownloadFullText(book)}
+                                     className="w-full flex items-center justify-center gap-1 px-2 py-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100/50 rounded text-xs transition-all mb-1"
+                                     title="הורד את הטקסט הקיים (חלקי)"
+                                 >
+                                     <span className="material-symbols-outlined text-[16px]">download</span>
+                                     <span>הורד טקסט חלקי</span>
+                                </button>
+                             )}
 
                             <div className="grid grid-cols-2 gap-2">
                                 <Link
@@ -619,3 +628,4 @@ export default function AdminBooksPage() {
   )
 
 }
+
