@@ -14,7 +14,7 @@ const UPLOAD_ROOT = process.env.UPLOAD_DIR || path.join(process.cwd(), 'public',
 export async function POST(request) {
   try {
     const session = await getServerSession(authOptions);
-    if (session?.user?.role !== 'admin') {
+    if (!session || session.user?.role !== 'admin') {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
@@ -24,41 +24,39 @@ export async function POST(request) {
     const file = formData.get('pdf');
     const bookName = formData.get('bookName');
     const category = formData.get('category') || 'כללי';
+    const isHidden = formData.get('isHidden') === 'true';
 
     if (!file || !bookName) {
       return NextResponse.json({ success: false, error: 'חסרים נתונים' }, { status: 400 });
     }
 
-    // 1. אבטחה: Path Traversal Protection
-    // שימוש ב-slugify כדי להסיר תווים מסוכנים כמו / \ ..
-    // הוספת timestamp כדי להבטיח ייחודיות ולמנוע דריסת תיקיות קיימות
-    const safeName = slugify(bookName, {
-        replacement: '-',  // replace spaces with replacement
-        remove: /[*+~.()'"!:@\/\\?]/g, // regex to remove characters (כולל סלשים)
-        lower: false,      // allow mixed case (לעברית זה פחות משנה אבל שומר על קריאות)
-        strict: false      // allow unicode (Hebrew)
-    });
-    
-    // ניקוי נוסף ליתר ביטחון (משאיר רק אותיות, מספרים ומקפים)
-    const sanitizedName = safeName.replace(/[^\w\u0590-\u05FF\-]/g, '');
-    
-    if (!sanitizedName) {
-         return NextResponse.json({ error: 'שם הספר מכיל תווים לא חוקיים' }, { status: 400 });
-    }
+    // --- מכאן והלאה: אותו קוד בדיוק כמו ב-Server Action המקורי ---
 
-    const slug = `${sanitizedName}-${Date.now().toString().slice(-6)}`;
-    
-    // שימוש ב-path.join מבטיח שימוש בספרטורים נכונים, אבל הניקוי למעלה הוא ההגנה האמיתית
-    const bookFolder = path.join(UPLOAD_ROOT, 'books', slug);
-    
-    // מניעת יציאה מהתיקייה (למקרה שמשהו התפספס, למרות שה-slugify אמור לטפל בזה)
-    if (!bookFolder.startsWith(UPLOAD_ROOT)) {
-        return NextResponse.json({ error: 'נתיב לא חוקי' }, { status: 400 });
+    // יצירת שם תיקייה (Slug)
+    let baseSlug = slugify(bookName, {
+        replacement: '-',  
+        remove: /[*+~.()'"!:@\/\\?]/g, 
+        lower: false,      
+        strict: false      
+    });
+    baseSlug = baseSlug.replace(/^-+|-+$/g, '') || 'book';
+
+    let slug = baseSlug;
+    let counter = 1;
+
+    while (true) {
+        const existingBook = await Book.findOne({ slug: slug });
+        const folderExists = await fs.pathExists(path.join(UPLOAD_ROOT, 'books', slug));
+        if (!existingBook && !folderExists) break;
+        slug = `${baseSlug}-${counter}`;
+        counter++;
     }
     
+    const bookFolder = path.join(UPLOAD_ROOT, 'books', slug);
     await fs.ensureDir(bookFolder);
 
-    const pdfBuffer = Buffer.from(await file.arrayBuffer());
+    const arrayBuffer = await file.arrayBuffer();
+    const pdfBuffer = Buffer.from(arrayBuffer);
     const tempPdfPath = path.join(bookFolder, 'source.pdf');
     await fs.writeFile(tempPdfPath, pdfBuffer);
 
@@ -72,6 +70,7 @@ export async function POST(request) {
     };
 
     const convert = fromPath(tempPdfPath, options);
+    // שימוש ב-bulk כפי שביקשת (שים לב שזה צורך הרבה זיכרון בקבצים גדולים)
     const result = await convert.bulk(-1, { responseType: "image" });
     
     if (!result || result.length === 0) {
@@ -84,7 +83,8 @@ export async function POST(request) {
       category: category,
       folderPath: `/uploads/books/${slug}`,
       totalPages: result.length,
-      completedPages: 0
+      completedPages: 0,
+      isHidden: isHidden
     });
 
     const pagesData = result.map((page, index) => ({

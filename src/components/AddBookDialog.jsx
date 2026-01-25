@@ -24,18 +24,11 @@ export default function AddBookDialog({ isOpen, onClose, onBookAdded }) {
     }
 
     const handleSubmit = async () => {
-        // Validation
+        // ולידציות (נשאר אותו דבר)
         const bookNameCheck = validateRequired(bookName, 'שם הספר')
-        if (!bookNameCheck.isValid) {
-            setError(bookNameCheck.error)
-            return
-        }
-
+        if (!bookNameCheck.isValid) { setError(bookNameCheck.error); return }
         const fileCheck = validateFile(file)
-        if (!fileCheck.isValid) {
-            setError(fileCheck.error)
-            return
-        }
+        if (!fileCheck.isValid) { setError(fileCheck.error); return }
 
         setIsUploading(true)
         setError(null)
@@ -47,18 +40,25 @@ export default function AddBookDialog({ isOpen, onClose, onBookAdded }) {
         formData.append('isHidden', isHidden);
 
         try {
-            const result = await uploadBookAction(formData)
+            // --- השינוי: פנייה ל-API החדש במקום ל-Action ---
+            const response = await fetch('/api/admin/books/upload', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
 
-            if (!result.success) {
+            if (!response.ok || !result.success) {
                 throw new Error(result.error || 'שגיאה בהעלאה')
             }
+            // ------------------------------------------------
 
             if (onBookAdded) onBookAdded()
             onClose()
             setFile(null)
             setBookName('')
             setCategory('כללי')
-
+            setIsHidden(false);
         } catch (err) {
             console.error(err)
             setError('שגיאה בתהליך ההעלאה וההמרה: ' + err.message)

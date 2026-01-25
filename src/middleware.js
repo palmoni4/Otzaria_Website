@@ -29,13 +29,12 @@ export default withAuth(
 
 export const config = {
   matcher: [
-    // רשימת הנתיבים שדורשים הגנה
     '/library/dashboard/:path*',
     '/library/admin/:path*',
     '/library/upload/:path*',
     '/library/edit/:path*',
     '/library/users/:path*',
-    '/api/admin/:path*', // הגנה גם על ה-API של האדמין
+    '/api/admin/((?!books/upload).*)', 
     '/api/upload-text/:path*'
   ]
 };
