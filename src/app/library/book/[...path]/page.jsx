@@ -161,7 +161,13 @@ export default function BookPage() {
           if (result.success) {
             setPages(prevPages => 
               prevPages.map(page => 
-                page.number === pageNumber ? { ...page, status: 'in-progress', claimedBy: session.user.name, claimedById: userId } : page
+                page.number === pageNumber ? { 
+                  ...page, 
+                  status: 'in-progress', 
+                  claimedBy: session.user.name, 
+                  claimedById: userId,
+                  claimedAt: new Date().toISOString()
+                } : page
               )
             )
           } else {
@@ -466,6 +472,92 @@ export default function BookPage() {
   )
 }
 
+function toGematria(num) {
+  if (num === 15) return 'ט"ו';
+  if (num === 16) return 'ט"ז';
+  
+  const letters = [
+      { val: 400, char: 'ת' },
+      { val: 300, char: 'ש' },
+      { val: 200, char: 'ר' },
+      { val: 100, char: 'ק' },
+      { val: 90, char: 'צ' },
+      { val: 80, char: 'פ' },
+      { val: 70, char: 'ע' },
+      { val: 60, char: 'ס' },
+      { val: 50, char: 'נ' },
+      { val: 40, char: 'מ' },
+      { val: 30, char: 'ל' },
+      { val: 20, char: 'כ' },
+      { val: 10, char: 'י' },
+      { val: 9, char: 'ט' },
+      { val: 8, char: 'ח' },
+      { val: 7, char: 'ז' },
+      { val: 6, char: 'ו' },
+      { val: 5, char: 'ה' },
+      { val: 4, char: 'ד' },
+      { val: 3, char: 'ג' },
+      { val: 2, char: 'ב' },
+      { val: 1, char: 'א' }
+  ];
+
+  let result = '';
+  let n = num;
+  
+  for (const { val, char } of letters) {
+      while (n >= val) {
+          result += char;
+          n -= val;
+      }
+  }
+  
+  if (result.length > 1) {
+      return result.slice(0, -1) + '"' + result.slice(-1);
+  } 
+  return result + "'";
+}
+
+function formatHebrewDate(dateString) {
+  if (!dateString) return '';
+  try {
+    const date = new Date(dateString);
+    const parts = new Intl.DateTimeFormat('he-IL-u-ca-hebrew-nu-latn', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    }).formatToParts(date);
+    
+    const dayPart = parts.find(p => p.type === 'day');
+    const monthPart = parts.find(p => p.type === 'month');
+    const yearPart = parts.find(p => p.type === 'year');
+    
+    if (!dayPart || !monthPart || !yearPart) return '';
+    
+    const day = parseInt(dayPart.value, 10);
+    const year = parseInt(yearPart.value, 10);
+    
+    return `${toGematria(day)} ב${monthPart.value} ${toGematria(year % 1000)}`;
+  } catch (e) {
+    return '';
+  }
+}
+
+function formatTimeAgo(dateString) {
+  if (!dateString) return '';
+  try {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = now - date;
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return 'היום';
+    if (diffDays === 1) return 'אתמול';
+    return `לפני ${diffDays} ימים`;
+  } catch (e) {
+    return '';
+  }
+}
+
 function PageCard({ page, onClaim, onComplete, onRelease, onUncomplete, onPreview, currentUser, bookPath, isAdmin }) {
   const status = pageStatusConfig[page.status]
   
@@ -534,9 +626,16 @@ function PageCard({ page, onClaim, onComplete, onRelease, onUncomplete, onPrevie
         </div>
 
         {page.claimedBy && (
-          <p className="text-xs text-on-surface/60 mb-2 truncate font-medium">
-            {isClaimedByMe ? 'משויך אליך' : `ע"י ${page.claimedBy}`}
-          </p>
+          <div className="mb-2">
+            <p className="text-xs text-on-surface/60 truncate font-medium" title={isClaimedByMe ? 'משויך אליך' : `ע"י ${page.claimedBy}`}>
+              {isClaimedByMe ? 'משויך אליך' : `ע"י ${page.claimedBy}`}
+            </p>
+            {page.claimedAt && (
+              <p className="text-[10px] text-on-surface/50 leading-tight">
+                {formatHebrewDate(page.claimedAt)}, {formatTimeAgo(page.claimedAt)}
+              </p>
+            )}
+          </div>
         )}
 
         <div className="mt-auto grid gap-2">
