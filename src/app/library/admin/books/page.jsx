@@ -12,6 +12,7 @@ export default function AdminBooksPage() {
   const [showAddBook, setShowAddBook] = useState(false)
   const [editingBookInfo, setEditingBookInfo] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [activeTab, setActiveTab] = useState('all') // הוספתי את זה כי זה היה חסר
 
   const [renamingBook, setRenamingBook] = useState(null)
   const [newName, setNewName] = useState('')
@@ -132,7 +133,6 @@ export default function AdminBooksPage() {
             document.body.appendChild(link);
             link.click();
             
-            // ניקוי
             document.body.removeChild(link);
             window.URL.revokeObjectURL(url);
         } else {
@@ -208,9 +208,24 @@ export default function AdminBooksPage() {
       }
   };
 
-  const filteredBooks = books.filter(book => 
-    book.name.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const filteredBooks = books.filter(book => {  
+    const matchesSearch = book.name.toLowerCase().includes(searchTerm.toLowerCase());  
+    if (!matchesSearch) return false;  
+
+    const total = book.totalPages || 0;  
+    const completed = book.completedPages || 0;  
+
+    switch (activeTab) {  
+      case 'in_progress':  
+        return completed > 0 && completed < total;  
+      case 'hidden':  
+        return book.isHidden;  
+      case 'completed':  
+        return total > 0 && completed >= total;  
+      default:  
+        return true;  
+    }  
+  });  
 
   if (loading) return (
     <div className="flex justify-center items-center h-64">
@@ -259,7 +274,27 @@ export default function AdminBooksPage() {
             </div>
         </div>
 
-        {/* --- רשימת הספרים --- */}
+      <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+        {[
+            { id: 'all', label: 'כל הספרים' },
+            { id: 'in_progress', label: 'בטיפול' },
+            { id: 'hidden', label: 'מוסתרים' },
+            { id: 'completed', label: 'הושלמו' },
+        ].map(tab => (
+            <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+                    activeTab === tab.id 
+                    ? 'bg-primary text-on-primary' 
+                    : 'bg-white/50 text-gray-600 hover:bg-white/80'
+                }`}
+            >
+                {tab.label}
+            </button>
+        ))}
+      </div>
+
         {books.length === 0 ? (
             <div className="text-center py-20 text-gray-500">
             <span className="material-symbols-outlined text-6xl mb-2">library_books</span>
@@ -334,7 +369,6 @@ export default function AdminBooksPage() {
                         </div>
 
                         <div className="mt-auto space-y-2">
-                            {/* --- כפתור הורדה לספר שהושלם --- */}
                             {progress === 100 && (
                                 <button
                                     onClick={() => handleDownloadFullText(book)}
@@ -395,7 +429,6 @@ export default function AdminBooksPage() {
             </div>
         )}
 
-        {/* דיאלוגים */}
         <AddBookDialog
             isOpen={showAddBook}
             onClose={() => setShowAddBook(false)}
@@ -411,7 +444,6 @@ export default function AdminBooksPage() {
         )}
         </div>
 
-        {/* דיאלוג שינוי שם */}
         {renamingBook && (
             <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200 h-screen w-screen">
                 <div 
@@ -455,14 +487,12 @@ export default function AdminBooksPage() {
             </div>
         )}
 
-        {/* --- דיאלוג מיזוג ספרים --- */}
         {showMergeDialog && (
             <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200 h-screen w-screen">
                 <div 
                     className="bg-white rounded-xl shadow-2xl w-full max-w-5xl overflow-hidden relative flex flex-col h-[85vh]" 
                     onClick={e => e.stopPropagation()}
                 >
-                    {/* Header */}
                     <div className="p-4 border-b bg-gray-50 flex justify-between items-center shrink-0">
                         <div className="flex items-center gap-3">
                             <div className="bg-purple-100 p-2 rounded-full">
@@ -478,23 +508,12 @@ export default function AdminBooksPage() {
                         </button>
                     </div>
                     
-                    {/* Content */}
                     <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
-                        
-                        {/* Right: List */}
                         <div className="w-full md:w-1/2 border-l p-4 flex flex-col bg-gray-50/50">
                             <h4 className="font-bold text-gray-700 mb-3 flex items-center gap-2">
                                 <span className="material-symbols-outlined text-sm">library_books</span>
                                 בחר ספרים להוספה
                             </h4>
-                            <div className="relative mb-3">
-                                <input 
-                                    type="text" 
-                                    placeholder="סינון רשימה..." 
-                                    className="w-full border rounded-lg pl-2 pr-8 py-1.5 text-sm bg-white"
-                                />
-                                <span className="material-symbols-outlined absolute right-2 top-1.5 text-gray-400 text-lg">search</span>
-                            </div>
                             <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
                                 {books.map(book => {
                                     const isSelected = selectedBooksToMerge.some(b => b.id === book.id);
@@ -526,7 +545,6 @@ export default function AdminBooksPage() {
                             </div>
                         </div>
 
-                        {/* Left: Selected */}
                         <div className="w-full md:w-1/2 p-4 flex flex-col bg-white">
                             <h4 className="font-bold text-gray-700 mb-4 flex items-center gap-2">
                                 <span className="material-symbols-outlined text-sm">format_list_numbered</span>
@@ -544,8 +562,6 @@ export default function AdminBooksPage() {
                                         placeholder="לדוגמה: אוסף כתבים מלא"
                                     />
                                 </div>
-                                
-                                {/* הוספת אפשרות הסתרה */}
                                 <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
                                     <input 
                                         type="checkbox" 
@@ -567,39 +583,15 @@ export default function AdminBooksPage() {
                                     {selectedBooksToMerge.map((book, index) => (
                                         <div key={book.id} className="bg-purple-50 border border-purple-100 p-3 rounded-lg flex items-center gap-3 animate-in slide-in-from-right-4 duration-300">
                                             <div className="font-bold text-purple-300 text-lg w-6 text-center">{index + 1}</div>
-                                            
-                                            {book.thumbnail ? (
-                                                <Image src={book.thumbnail} alt="" width={30} height={40} className="rounded object-cover shadow-sm" />
-                                            ) : (
-                                                <div className="w-[30px] h-[40px] bg-white rounded flex items-center justify-center border">
-                                                    <span className="material-symbols-outlined text-gray-300 text-sm">book</span>
-                                                </div>
-                                            )}
-                                            
-                                            <div className="flex-1 min-w-0">
-                                                <div className="font-medium text-sm text-gray-900 truncate">{book.name}</div>
-                                            </div>
-
+                                            <div className="flex-1 min-w-0 font-medium text-sm text-gray-900 truncate">{book.name}</div>
                                             <div className="flex items-center gap-1 bg-white rounded-lg border shadow-sm p-1">
-                                                <button 
-                                                    onClick={() => moveBookOrder(index, 'up')}
-                                                    disabled={index === 0}
-                                                    className="p-1 hover:bg-gray-100 rounded disabled:opacity-30"
-                                                >
+                                                <button onClick={() => moveBookOrder(index, 'up')} disabled={index === 0} className="p-1 hover:bg-gray-100 rounded disabled:opacity-30">
                                                     <span className="material-symbols-outlined text-sm">arrow_upward</span>
                                                 </button>
-                                                <button 
-                                                    onClick={() => moveBookOrder(index, 'down')}
-                                                    disabled={index === selectedBooksToMerge.length - 1}
-                                                    className="p-1 hover:bg-gray-100 rounded disabled:opacity-30"
-                                                >
+                                                <button onClick={() => moveBookOrder(index, 'down')} disabled={index === selectedBooksToMerge.length - 1} className="p-1 hover:bg-gray-100 rounded disabled:opacity-30">
                                                     <span className="material-symbols-outlined text-sm">arrow_downward</span>
                                                 </button>
-                                                <div className="w-px h-4 bg-gray-200 mx-1"></div>
-                                                <button 
-                                                    onClick={() => removeBookFromMergeList(book.id)}
-                                                    className="p-1 text-red-500 hover:bg-red-50 rounded"
-                                                >
+                                                <button onClick={() => removeBookFromMergeList(book.id)} className="p-1 text-red-500 hover:bg-red-50 rounded">
                                                     <span className="material-symbols-outlined text-sm">close</span>
                                                 </button>
                                             </div>
@@ -610,35 +602,15 @@ export default function AdminBooksPage() {
                         </div>
                     </div>
 
-                    {/* Footer */}
-                    <div className="p-4 border-t bg-gray-50 flex justify-between items-center shrink-0">
-                        <div className="text-xs text-gray-500">
-                            {selectedBooksToMerge.length} ספרים נבחרו למיזוג
-                        </div>
-                        <div className="flex gap-3">
-                            <button 
-                                onClick={() => setShowMergeDialog(false)}
-                                className="px-5 py-2.5 text-gray-600 hover:bg-gray-100 rounded-lg font-medium transition-colors"
-                            >
-                                ביטול
-                            </button>
-                            <button 
-                                onClick={handleMergeSubmit}
-                                disabled={selectedBooksToMerge.length < 2 || !mergedBookName.trim() || isMerging}
-                                className={`px-6 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-bold shadow-md transition-all flex items-center gap-2 ${
-                                    (selectedBooksToMerge.length < 2 || !mergedBookName.trim() || isMerging) 
-                                    ? 'opacity-50 grayscale cursor-not-allowed' 
-                                    : 'hover:-translate-y-0.5'
-                                }`}
-                            >
-                                {isMerging ? (
-                                    <span className="material-symbols-outlined animate-spin text-xl">progress_activity</span>
-                                ) : (
-                                    <span className="material-symbols-outlined text-xl">call_merge</span>
-                                )}
-                                {isMerging ? 'מבצע מיזוג...' : 'בצע מיזוג עכשיו'}
-                            </button>
-                        </div>
+                    <div className="p-4 border-t bg-gray-50 flex justify-end gap-3 shrink-0">
+                        <button onClick={() => setShowMergeDialog(false)} className="px-5 py-2.5 text-gray-600 hover:bg-gray-100 rounded-lg font-medium transition-colors">ביטול</button>
+                        <button 
+                            onClick={handleMergeSubmit} 
+                            disabled={selectedBooksToMerge.length < 2 || !mergedBookName.trim() || isMerging}
+                            className="px-6 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-bold shadow-md disabled:opacity-50 flex items-center gap-2"
+                        >
+                            {isMerging ? 'מבצע מיזוג...' : 'בצע מיזוג עכשיו'}
+                        </button>
                     </div>
                 </div>
             </div>
