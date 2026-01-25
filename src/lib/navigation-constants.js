@@ -26,10 +26,10 @@ export const FOOTER_QUICK_LINKS = [
 ]
 
 export const FOOTER_EXTERNAL_LINKS = [
-  { href: 'https://github.com/Y-PLONI/otzaria-library', label: 'GitHub - ספריית אוצריא', icon: 'open_in_new' },
+  { href: 'https://github.com/Otzaria', label: 'GitHub - אוצריא', icon: 'open_in_new' },
   { 
-    href: 'https://mitmachim.top/topic/90100/%D7%91%D7%A7%D7%A9%D7%94-%D7%94%D7%A4%D7%A8%D7%95%D7%99%D7%A7%D7%98-%D7%94%D7%A9%D7%99%D7%AA%D7%95%D7%A4%D7%99-%D7%94%D7%97%D7%93%D7%A9-%D7%9E%D7%91%D7%99%D7%AA-%D7%90%D7%95%D7%A6%D7%A8%D7%99%D7%90-%D7%95%D7%96%D7%99%D7%AA-%D7%94%D7%95%D7%A1%D7%A4%D7%AA-%D7%A1%D7%A4%D7%A8%D7%99%D7%9D-%D7%97%D7%A1%D7%A8%D7%99%D7%9D', 
-    label: 'מתמחים טופ', 
+    href: 'https://otzaria.org/forum', 
+    label: 'פורום אוצריא', 
     icon: 'open_in_new' 
   }
 ]
