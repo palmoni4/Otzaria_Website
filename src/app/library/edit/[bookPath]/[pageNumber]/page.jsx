@@ -47,6 +47,13 @@ export default function EditPage() {
   const [columnWidth, setColumnWidth] = useState(50)
   const [isColumnResizing, setIsColumnResizing] = useState(false)
   
+  // Refs for optimized resizing
+  const imagePanelWidthRef = useRef(imagePanelWidth)
+  const columnWidthRef = useRef(columnWidth)
+
+  useEffect(() => { imagePanelWidthRef.current = imagePanelWidth }, [imagePanelWidth])
+  useEffect(() => { columnWidthRef.current = columnWidth }, [columnWidth])
+
   const [swapPanels, setSwapPanels] = useState(false)
   const [isOCRBlocking, setIsOCRBlocking] = useState(false)
   const cancelOCRRef = useRef(false)
@@ -113,20 +120,9 @@ export default function EditPage() {
                     setSavedSearches(data.savedSearches);
                 }
             })
-        // 2. טעינת העדפות משתמש (ספרים מושתקים)
-        fetch('/api/user/preferences')
-            .then(res => res.json())
-            .then(data => {
-                if (data.success && Array.isArray(data.hiddenBooks)) {
-                    if (data.hiddenBooks.includes(bookPath)) {
-                        localStorage.setItem(`hide_instructions_${bookPath}`, 'true');
-                        setShowInfoDialog(false);
-                    }
-                }
-            })
             .catch(err => console.error('Failed to load saved searches from server:', err));
     }
-  }, [status, bookPath])
+  }, [status])
 
   useEffect(() => {
     if (bookPath && !loading) {
@@ -454,8 +450,8 @@ export default function EditPage() {
     const handleMouseUp = () => {
       setIsResizing(false)
       setIsColumnResizing(false)
-      localStorage.setItem('imagePanelWidth', imagePanelWidth.toString())
-      localStorage.setItem('columnWidth', columnWidth.toString())
+      localStorage.setItem('imagePanelWidth', imagePanelWidthRef.current.toString())
+      localStorage.setItem('columnWidth', columnWidthRef.current.toString())
     }
     document.addEventListener('mousemove', handleMouseMove)
     document.addEventListener('mouseup', handleMouseUp)
@@ -463,7 +459,7 @@ export default function EditPage() {
       document.removeEventListener('mousemove', handleMouseMove)
       document.removeEventListener('mouseup', handleMouseUp)
     }
-  }, [isResizing, isColumnResizing, layoutOrientation, swapPanels, imagePanelWidth, columnWidth])
+  }, [isResizing, isColumnResizing, layoutOrientation, swapPanels])
 
   const toggleColumns = () => {
     if (!twoColumns) setShowSplitDialog(true)
