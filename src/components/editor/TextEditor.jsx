@@ -1,4 +1,6 @@
-export default function TextEditor({
+import { forwardRef } from 'react'
+
+const TextEditor = forwardRef(({
   content,
   leftColumn,
   rightColumn,
@@ -8,17 +10,23 @@ export default function TextEditor({
   handleAutoSave,
   handleColumnChange,
   setActiveTextarea,
-  selectedFont
-}) {
+  selectedFont,
+  columnWidth,
+  onColumnResizeStart
+}, ref) => {
   return (
     <div
-      className="flex flex-col overflow-auto p-4 editor-container"
+      ref={ref}
+      className="flex flex-col overflow-auto p-4 editor-container text-editor-container"
       style={{ flex: 1 }}
       onWheel={(e) => e.stopPropagation()}
     >
       {twoColumns ? (
-        <div className="grid grid-cols-2 gap-4 h-full">
-          <div className="flex flex-col h-full">
+        <div className="flex flex-row h-full gap-0">
+          <div 
+            className="flex flex-col h-full" 
+            style={{ width: `${columnWidth}%` }}
+          >
             <div className="flex items-center gap-2 mb-2 px-2">
               <span className="material-symbols-outlined text-primary text-sm">article</span>
               <span className="text-sm font-bold text-on-surface">{rightColumnName}</span>
@@ -34,7 +42,13 @@ export default function TextEditor({
               dir="rtl"
             />
           </div>
-          <div className="flex flex-col h-full">
+
+          <div
+            className="w-2 hover:bg-primary/30 cursor-col-resize flex-shrink-0 transition-colors mx-1 rounded-full"
+            onMouseDown={onColumnResizeStart}
+          />
+
+          <div className="flex flex-col h-full flex-1">
             <div className="flex items-center gap-2 mb-2 px-2">
               <span className="material-symbols-outlined text-primary text-sm">article</span>
               <span className="text-sm font-bold text-on-surface">{leftColumnName}</span>
@@ -64,4 +78,7 @@ export default function TextEditor({
       )}
     </div>
   )
-}
+})
+
+TextEditor.displayName = 'TextEditor'
+export default TextEditor

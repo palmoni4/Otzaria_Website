@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter, useParams } from 'next/navigation'
 
@@ -44,7 +44,20 @@ export default function EditPage() {
   const [layoutOrientation, setLayoutOrientation] = useState('vertical')
   const [imagePanelWidth, setImagePanelWidth] = useState(50)
   const [isResizing, setIsResizing] = useState(false)
+  const [columnWidth, setColumnWidth] = useState(50)
+  const [isColumnResizing, setIsColumnResizing] = useState(false)
   
+  // DOM Refs
+  const splitContainerRef = useRef(null)
+  const textEditorContainerRef = useRef(null)
+  
+  // Value Refs for persistent access during resizing
+  const imagePanelWidthRef = useRef(imagePanelWidth)
+  const columnWidthRef = useRef(columnWidth)
+
+  useEffect(() => { imagePanelWidthRef.current = imagePanelWidth }, [imagePanelWidth])
+  useEffect(() => { columnWidthRef.current = columnWidth }, [columnWidth])
+
   const [swapPanels, setSwapPanels] = useState(false)
   const [isOCRBlocking, setIsOCRBlocking] = useState(false)
   const cancelOCRRef = useRef(false)
@@ -90,6 +103,7 @@ export default function EditPage() {
     const savedPrompt = localStorage.getItem('gemini_prompt')
     const savedModel = localStorage.getItem('gemini_model')
     const savedPanelWidth = localStorage.getItem('imagePanelWidth')
+    const savedColumnWidth = localStorage.getItem('columnWidth')
     const savedOrientation = localStorage.getItem('layoutOrientation')
     const savedSwap = localStorage.getItem('swapPanels')
     
@@ -97,6 +111,7 @@ export default function EditPage() {
     if (savedPrompt) setCustomPrompt(savedPrompt)
     if (savedModel) setSelectedModel(savedModel)
     if (savedPanelWidth) setImagePanelWidth(parseFloat(savedPanelWidth))
+    if (savedColumnWidth) setColumnWidth(parseFloat(savedColumnWidth))
     if (savedOrientation) setLayoutOrientation(savedOrientation)
     if (savedSwap) setSwapPanels(savedSwap === 'true')
 
@@ -404,10 +419,14 @@ export default function EditPage() {
     setIsResizing(true)
   }
 
-  useEffect(() => {
-    if (!isResizing) return
-    const handleMouseMove = (e) => {
-      const container = document.querySelector('.split-container')
+  const handleColumnResizeStart = (e) => {
+    e.preventDefault()
+    setIsColumnResizing(true)
+  }
+
+  const handleMouseMove = useCallback((e) => {
+    if (isResizing) {
+      const container = splitContainerRef.current
       if (!container) return
       const rect = container.getBoundingClientRect()
       let newSize 
@@ -421,18 +440,33 @@ export default function EditPage() {
             : ((rect.right - e.clientX) / rect.width) * 100
       }
       setImagePanelWidth(Math.min(Math.max(newSize, 20), 80))
+    } else if (isColumnResizing) {
+      const editorContainer = textEditorContainerRef.current
+      if (!editorContainer) return
+      const rect = editorContainer.getBoundingClientRect()
+      const relativeX = rect.right - e.clientX
+      const newWidth = (relativeX / rect.width) * 100
+      setColumnWidth(Math.min(Math.max(newWidth, 10), 90))
     }
-    const handleMouseUp = () => {
-      setIsResizing(false)
-      localStorage.setItem('imagePanelWidth', imagePanelWidth.toString())
+  }, [isResizing, isColumnResizing, layoutOrientation, swapPanels])
+
+  const handleMouseUp = useCallback(() => {
+    setIsResizing(false)
+    setIsColumnResizing(false)
+    localStorage.setItem('imagePanelWidth', imagePanelWidthRef.current.toString())
+    localStorage.setItem('columnWidth', columnWidthRef.current.toString())
+  }, [])
+
+  useEffect(() => {
+    if (isResizing || isColumnResizing) {
+      document.addEventListener('mousemove', handleMouseMove)
+      document.addEventListener('mouseup', handleMouseUp)
     }
-    document.addEventListener('mousemove', handleMouseMove)
-    document.addEventListener('mouseup', handleMouseUp)
     return () => {
       document.removeEventListener('mousemove', handleMouseMove)
       document.removeEventListener('mouseup', handleMouseUp)
     }
-  }, [isResizing, layoutOrientation, swapPanels])
+  }, [isResizing, isColumnResizing, handleMouseMove, handleMouseUp])
 
   const toggleColumns = () => {
     if (!twoColumns) setShowSplitDialog(true)
@@ -640,7 +674,7 @@ export default function EditPage() {
       className={`bg-background flex flex-col overflow-hidden transition-all duration-300 ${
         isFullScreen ? 'fixed inset-0 z-[100] h-screen w-screen' : 'h-[calc(100vh-0px)]' 
       }`}
-      style={{ cursor: isResizing ? 'col-resize' : 'default' }}
+      style={{ cursor: isResizing || isColumnResizing ? 'col-resize' : 'default' }}
     >
       {!isFullScreen && (
         <EditorHeader 
@@ -680,6 +714,7 @@ export default function EditPage() {
       <div className={`flex-1 flex flex-col overflow-hidden ${isFullScreen ? 'p-0' : 'p-6'}`}>
         <div className={`flex-1 flex flex-col overflow-hidden ${isFullScreen ? '' : 'glass-strong rounded-xl border border-surface-variant'}`}>
           <div 
+            ref={splitContainerRef}
             className="flex-1 flex overflow-hidden split-container" 
             style={{ 
                 flexDirection: layoutOrientation === 'horizontal' 
@@ -698,11 +733,13 @@ export default function EditPage() {
               isResizing={isResizing} handleResizeStart={handleResizeStart}
             />
             <TextEditor 
+              ref={textEditorContainerRef}
               content={content} leftColumn={leftColumn} rightColumn={rightColumn}
               twoColumns={twoColumns} rightColumnName={rightColumnName} leftColumnName={leftColumnName}
               handleAutoSave={(txt) => { setContent(txt); handleAutoSaveWrapper(txt); }}
               handleColumnChange={handleColumnChange}
               setActiveTextarea={setActiveTextarea} selectedFont={selectedFont}
+              columnWidth={columnWidth} onColumnResizeStart={handleColumnResizeStart}
             />
           </div>
           
@@ -823,4 +860,3 @@ function UploadDialog({ pageNumber, onConfirm, onCancel }) {
     </div>
   )
 }
-
