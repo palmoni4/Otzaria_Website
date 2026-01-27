@@ -23,6 +23,7 @@ export default function AdminNav({ unreadMessagesCount = 0, pendingUploadsCount 
       icon: 'mail', 
       href: '/library/admin/messages' 
     },
+    { id: 'reminders', label: 'תזכורות', icon: 'notifications', href: '/library/admin/reminders' },
   ]
 
   return (
