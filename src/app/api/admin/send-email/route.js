@@ -24,6 +24,8 @@ export async function POST(request) {
             replyTo   // כתובת למענה (אופציונלי)
         } = body;
 
+        const isDev = process.env.NODE_ENV === 'development';
+
         // ולידציה בסיסית
         if ((!to && !bcc) || !subject || (!text && !html)) {
             return NextResponse.json({ 
@@ -40,8 +42,9 @@ export async function POST(request) {
                 user: process.env.SMTP_USER,
                 pass: process.env.SMTP_PASS,
             },
+
             tls: {
-                rejectUnauthorized: false, // מאשר תעודות לא מוכרות (כמו של נטפרי)
+                rejectUnauthorized: !(isDev), // מאשר תעודות לא מוכרות (כמו של נטפרי)
                 ciphers: 'SSLv3' // לעיתים עוזר בבעיות תאימות
             }
         });
