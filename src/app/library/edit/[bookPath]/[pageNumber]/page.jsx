@@ -97,7 +97,7 @@ export default function EditPage() {
 
   const { save: debouncedSave, status: saveStatus } = useAutoSave()
 
-  // Load Settings & Saved Searches
+  // Load Settings & Saved Searches & Preferences
   useEffect(() => {
     const savedApiKey = localStorage.getItem('gemini_api_key')
     const savedPrompt = localStorage.getItem('gemini_prompt')
@@ -115,8 +115,8 @@ export default function EditPage() {
     if (savedOrientation) setLayoutOrientation(savedOrientation)
     if (savedSwap) setSwapPanels(savedSwap === 'true')
 
-    // טעינת חיפושים שמורים מהשרת
     if (status === 'authenticated') {
+        // טעינת חיפושים שמורים
         fetch('/api/user/saved-searches')
             .then(res => res.json())
             .then(data => {
@@ -125,17 +125,31 @@ export default function EditPage() {
                 }
             })
             .catch(err => console.error('Failed to load saved searches from server:', err));
+            
+        const isLocallyHidden = localStorage.getItem(`hide_instructions_${bookPath}`);
+        
+        fetch('/api/user/preferences')
+            .then(res => res.json())
+            .then(data => {
+                const isServerHidden = data.success && data.hiddenBooks && data.hiddenBooks.includes(bookPath);
+                
+                if (isServerHidden) {
+                    localStorage.setItem(`hide_instructions_${bookPath}`, 'true');
+                    setShowInfoDialog(false);
+                } else {
+                    if (!isLocallyHidden) {
+                        setShowInfoDialog(true);
+                    }
+                }
+            })
+            .catch(err => {
+                console.error('Failed to sync preferences:', err);
+                if (!isLocallyHidden) setShowInfoDialog(true);
+            });
     }
-  }, [status])
+  }, [status, bookPath])
 
-  useEffect(() => {
-    if (bookPath && !loading) {
-      const shouldHide = localStorage.getItem(`hide_instructions_${bookPath}`)
-      if (!shouldHide) {
-        setShowInfoDialog(true)
-      }
-    }
-  }, [bookPath, loading])
+  // הערה: מחקתי כאן את ה-useEffect שהיה קודם ושפתח את החלונית מיד.
 
   const toggleFullScreen = async () => {
     try {
